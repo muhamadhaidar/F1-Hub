@@ -6,6 +6,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import LoginScreen from '@/screens/LoginScreen';
 import ModalScreen from '@/screens/ModalScreen';
+import RaceJournalScreen from '@/screens/RaceJournalScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
 import StandingsScreen from '@/screens/StandingsScreen';
 import MainTabNavigator from './MainTabNavigator';
@@ -31,6 +32,7 @@ export default function AppNavigator() {
                     <Stack.Screen name="Modal" component={ModalScreen} options={{ presentation: 'modal', title: 'Modal' }} />
                     <Stack.Screen name="Standings" component={StandingsScreen} options={{ presentation: 'modal', headerShown: false }} />
                     <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="RaceJournal" component={RaceJournalScreen} options={{ headerShown: false }} />
                 </>
             ) : (
                 <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

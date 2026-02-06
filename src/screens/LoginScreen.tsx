@@ -123,6 +123,9 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         padding: 24,
+        maxWidth: 1000,
+        width: '100%',
+        alignSelf: 'center',
     },
     logoContainer: {
         alignItems: 'center',

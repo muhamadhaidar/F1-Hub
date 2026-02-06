@@ -4,7 +4,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
     const navigation = useNavigation();
@@ -16,7 +16,6 @@ export default function SettingsScreen() {
     };
 
     const handleLanguageChange = () => {
-        // Simple toggle for now, ideal world use a modal picker
         if (language === 'en') {
             setLanguage('id');
         } else {
@@ -26,21 +25,18 @@ export default function SettingsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: resolvedTheme === 'dark' ? Colors.dark.background : Colors.light.background }]}>
-            {/* Safe Area Spacer for Notch/Status Bar */}
-            <SafeAreaView edges={['top']} style={{ backgroundColor: resolvedTheme === 'dark' ? Colors.dark.card : Colors.light.card }} />
 
-            {/* Header */}
+            {/* Header with dynamic safe area padding */}
             <View style={[styles.header, {
                 backgroundColor: resolvedTheme === 'dark' ? Colors.dark.card : Colors.light.card,
                 borderBottomColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border,
-                paddingTop: 10,
-                paddingBottom: 10,
-                height: 60,
+                paddingTop: (insets.top || 40) + 10,
+                paddingBottom: 12,
             }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={30}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={15}>
                     <IconSymbol name="chevron.left" size={28} color={resolvedTheme === 'dark' ? "#FFF" : "#000"} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: resolvedTheme === 'dark' ? "#FFF" : "#000" }]}>{t('settings')}</Text>
+                <Text style={[styles.headerTitle, { color: resolvedTheme === 'dark' ? "#FFF" : "#000" }]}>{t('settings').toUpperCase()}</Text>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -59,6 +55,7 @@ export default function SettingsScreen() {
                             <IconSymbol name="chevron.right" size={16} color="#666" />
                         </View>
                     </TouchableOpacity>
+
 
                     <View style={[styles.separator, { backgroundColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border }]} />
 
@@ -120,8 +117,9 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 22,
+        fontWeight: '900',
+        fontStyle: 'italic',
         letterSpacing: 1,
     },
     content: {

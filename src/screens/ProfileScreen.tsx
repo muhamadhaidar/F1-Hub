@@ -1,10 +1,12 @@
 
+import { HoverScale } from '@/components/ui/HoverScale';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useFavorites } from '@/hooks/useFavorites';
 import { getRaceImage } from '@/services/api';
 import { getUserProfile, saveUserProfile, UserProfile } from '@/services/database';
 import { getDriverImageUrl, getTeamLogoUrl } from '@/services/imageMap';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
@@ -33,6 +35,8 @@ export default function ProfileScreen() {
     const [bio, setBio] = useState('F1 Enthusiast');
     const [photo, setPhoto] = useState('https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png');
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     // Load Profile
     useEffect(() => {
@@ -58,13 +62,16 @@ export default function ProfileScreen() {
     const [tempPhoto, setTempPhoto] = useState(photo);
 
     const handleSaveProfile = async () => {
-        const newProfile: UserProfile = {
-            name: tempName,
-            bio: tempBio,
-            photo: tempPhoto,
-        };
-
+        setIsSaving(true);
+        setSaveError(null);
         try {
+            // Reverted to local save only (no upload) as per user request
+            const newProfile: UserProfile = {
+                name: tempName,
+                bio: tempBio,
+                photo: tempPhoto,
+            };
+
             await saveUserProfile(newProfile);
             setName(tempName);
             setBio(tempBio);
@@ -73,7 +80,11 @@ export default function ProfileScreen() {
             Alert.alert('Success', 'Profile updated successfully!');
         } catch (error) {
             console.error('Failed to save profile:', error);
-            Alert.alert('Error', 'Failed to save profile. Please try again.');
+            const errorMessage = (error as any)?.message || 'Unknown error occurred';
+            setSaveError(errorMessage);
+            Alert.alert('Error', `Failed to save profile: ${errorMessage}`);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -90,7 +101,7 @@ export default function ProfileScreen() {
             mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [1, 1],
-            quality: 1,
+            quality: 0.4,
         });
 
         if (!result.canceled) {
@@ -113,7 +124,7 @@ export default function ProfileScreen() {
             <Text style={[styles.tabLabel, { color: themeColors.icon }]}>{t('favorite').toUpperCase()}</Text>
             <View style={[styles.tabBar, { backgroundColor: themeColors.card }]}>
                 {(['DRIVER', 'TEAM', 'RACE'] as TabType[]).map((tab) => (
-                    <TouchableOpacity
+                    <HoverScale
                         key={tab}
                         style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
                         onPress={() => setActiveTab(tab)}
@@ -124,7 +135,7 @@ export default function ProfileScreen() {
                         ]}>
                             {t(tab.toLowerCase() as any)}
                         </Text>
-                    </TouchableOpacity>
+                    </HoverScale>
                 ))}
             </View>
         </View>
@@ -134,7 +145,7 @@ export default function ProfileScreen() {
         if (activeTab === 'DRIVER') {
             if (drivers.length === 0) return <Text style={styles.emptyText}>No favorite drivers.</Text>;
             return drivers.map((driver: any) => (
-                <View key={driver.driverId} style={styles.driverLargeCard}>
+                <HoverScale key={driver.driverId} style={styles.driverLargeCard}>
                     <ImageBackground
                         source={{ uri: getDriverImageUrl(driver.driverId) }}
                         style={styles.driverCardBackground}
@@ -149,14 +160,14 @@ export default function ProfileScreen() {
                             <Text style={styles.driverTeamSubtitle}>{driver.team}</Text>
                         </View>
                     </ImageBackground>
-                </View>
+                </HoverScale>
             ));
         }
 
         if (activeTab === 'TEAM') {
             if (teams.length === 0) return <Text style={styles.emptyText}>No favorite teams.</Text>;
             return teams.map((team: any) => (
-                <View key={team.teamId} style={styles.teamLargeCard}>
+                <HoverScale key={team.teamId} style={styles.teamLargeCard}>
                     <ImageBackground
                         source={typeof getTeamLogoUrl(team.teamId) === 'string' ? { uri: getTeamLogoUrl(team.teamId) } : getTeamLogoUrl(team.teamId)}
                         style={styles.teamCardBackground}
@@ -173,14 +184,14 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                     </ImageBackground>
-                </View>
+                </HoverScale>
             ));
         }
 
         if (activeTab === 'RACE') {
             if (races.length === 0) return <Text style={styles.emptyText}>No favorite races.</Text>;
             return races.map((race: any) => (
-                <View key={race.id} style={styles.largeCard}>
+                <HoverScale key={race.id} style={styles.largeCard}>
                     <ImageBackground
                         source={{ uri: getRaceImage(race.circuit?.country || '') }}
                         style={styles.cardInfo}
@@ -199,7 +210,7 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                     </ImageBackground>
-                </View>
+                </HoverScale>
             ));
         }
     };
@@ -233,7 +244,7 @@ export default function ProfileScreen() {
                 <View style={styles.settingsGrid}>
                     {/* Row 1 */}
                     <View style={styles.settingsRow}>
-                        <TouchableOpacity
+                        <HoverScale
                             style={[
                                 styles.settingsCard,
                                 styles.f1Button,
@@ -246,9 +257,9 @@ export default function ProfileScreen() {
                                 style={[styles.f1Logo, resolvedTheme === 'light' && { tintColor: '#000' }]}
                                 resizeMode="contain"
                             />
-                        </TouchableOpacity>
+                        </HoverScale>
 
-                        <TouchableOpacity
+                        <HoverScale
                             style={[
                                 styles.settingsCard,
                                 styles.editProfileButton,
@@ -258,41 +269,55 @@ export default function ProfileScreen() {
                         >
                             <Text style={[styles.settingsLabel, { color: themeColors.text }]}>{t('editProfile')}</Text>
                             <IconSymbol name="pencil" size={16} color={themeColors.text} style={{ marginLeft: 8 }} />
-                        </TouchableOpacity>
+                        </HoverScale>
                     </View>
 
-                    {/* Row 2 - Notification */}
-                    <TouchableOpacity
-                        style={[
-                            styles.settingsCard,
-                            styles.notificationButton,
-                            { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }
-                        ]}
-                        onPress={() => Alert.alert('Notifications', 'Notifications enabled!')}
-                    >
-                        <Text style={[styles.settingsLabel, { color: themeColors.text }]}>{t('notification').toUpperCase()}</Text>
-                    </TouchableOpacity>
+
 
                     {/* Row 3 - Settings (New) */}
-                    <TouchableOpacity
+                    <HoverScale
                         style={[
                             styles.settingsCard,
-                            styles.notificationButton,
+                            styles.settingsButton,
                             { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }
                         ]}
                         onPress={() => navigation.navigate('Settings' as any)}
                     >
                         <Text style={[styles.settingsLabel, { color: themeColors.text }]}>{t('settings').toUpperCase()}</Text>
-                    </TouchableOpacity>
+                    </HoverScale>
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('favorite').toUpperCase()}</Text>
+                {/* Removed duplicate "Favorite" header as per user request */}
                 {renderTabs()}
 
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     {renderContent()}
 
-                    <TouchableOpacity
+                    <HoverScale
+                        style={[
+                            styles.logoutButton,
+                            {
+                                backgroundColor: themeColors.card,
+                                borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd',
+                                marginBottom: 15,
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                paddingHorizontal: 16,
+                                alignItems: 'center'
+                            }
+                        ]}
+                        onPress={() => navigation.navigate('RaceJournal' as never)}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="book" size={20} color={themeColors.tint} style={{ marginRight: 12 }} />
+                            <Text style={[styles.logoutText, { color: themeColors.text, fontSize: 14, letterSpacing: 0.5 }]}>
+                                {t('race_journal')}
+                            </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={themeColors.icon} />
+                    </HoverScale>
+
+                    <HoverScale
                         style={[
                             styles.logoutButton,
                             { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }
@@ -300,7 +325,7 @@ export default function ProfileScreen() {
                         onPress={signOut}
                     >
                         <Text style={styles.logoutText}>{t('logout')}</Text>
-                    </TouchableOpacity>
+                    </HoverScale>
                 </ScrollView>
             </View>
 
@@ -344,10 +369,19 @@ export default function ProfileScreen() {
                             <TouchableOpacity style={[styles.cancelButton, { backgroundColor: resolvedTheme === 'dark' ? '#333' : '#ccc' }]} onPress={() => setModalVisible(false)}>
                                 <Text style={[styles.cancelButtonText, resolvedTheme === 'light' && { color: '#000' }]}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
-                                <Text style={styles.saveButtonText}>Save</Text>
+                            <TouchableOpacity
+                                style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
+                                onPress={handleSaveProfile}
+                                disabled={isSaving}
+                            >
+                                <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
                             </TouchableOpacity>
                         </View>
+                        {saveError && (
+                            <Text style={{ color: '#FF4444', marginTop: 12, textAlign: 'center', fontSize: 13, fontWeight: 'bold' }}>
+                                {saveError}
+                            </Text>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -436,7 +470,7 @@ const styles = StyleSheet.create({
         borderColor: '#333',
         borderRadius: 12,
     },
-    notificationButton: {
+    settingsButton: {
         width: '100%',
         height: 50,
         backgroundColor: '#1C1C1E', // Dark card
@@ -446,10 +480,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#333',
     },
+
     settingsLabel: {
         color: '#FFF', // White text
-        fontWeight: 'bold',
-        fontSize: 12,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        fontSize: 14, // Slightly larger for readability with italics
         letterSpacing: 1,
     },
     sectionTitle: {
@@ -465,7 +501,8 @@ const styles = StyleSheet.create({
     tabLabel: {
         color: '#888',
         fontSize: 12,
-        fontWeight: 'bold',
+        fontWeight: '900',
+        fontStyle: 'italic',
         marginBottom: 8,
         letterSpacing: 1,
     },
@@ -486,7 +523,8 @@ const styles = StyleSheet.create({
     },
     tabText: {
         color: '#888',
-        fontWeight: 'bold',
+        fontWeight: '900',
+        fontStyle: 'italic',
         fontSize: 12,
     },
     tabTextActive: {
@@ -629,8 +667,9 @@ const styles = StyleSheet.create({
     },
     logoutText: {
         color: '#D00000', // Red text for logout
-        fontWeight: 'bold',
-        fontSize: 12,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        fontSize: 14,
         letterSpacing: 1,
     },
 
@@ -725,7 +764,8 @@ const styles = StyleSheet.create({
     profileName: {
         color: '#FFF',
         fontSize: 22,
-        fontWeight: 'bold',
+        fontWeight: '900',
+        fontStyle: 'italic',
     },
     profileBio: {
         color: 'rgba(255,255,255,0.8)',

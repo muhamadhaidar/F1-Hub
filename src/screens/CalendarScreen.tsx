@@ -5,13 +5,15 @@ import { f1Api, getRaceImage } from '@/services/api';
 import { F1Race } from '@/types/f1';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, ImageBackground, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, ImageBackground, Modal, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HoverScale } from '@/components/ui/HoverScale';
 import { useSettings } from '@/context/SettingsContext';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useNavigation } from '@react-navigation/native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -19,6 +21,7 @@ export default function CalendarScreen() {
   const { isFavorite, toggle } = useFavorites();
   const { resolvedTheme, t } = useSettings();
   const themeColors = Colors[resolvedTheme];
+  const navigation = useNavigation();
   const [races, setRaces] = useState<F1Race[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -105,7 +108,7 @@ export default function CalendarScreen() {
     const raceImage = getRaceImage(item.circuit.country);
 
     return (
-      <TouchableOpacity
+      <HoverScale
         style={[
           styles.raceCardContainer,
           isNext && styles.nextRaceBorder
@@ -120,17 +123,29 @@ export default function CalendarScreen() {
         >
           <View style={[styles.cardOverlay, isPast && { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
             <View style={styles.roundInfo}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                 <Text style={[styles.roundText, isNext && styles.nextRoundText]}>R{item.round}</Text>
                 {isNext && <View style={styles.nextBadge}><Text style={styles.nextBadgeText}>{t('next')}</Text></View>}
               </View>
-              <TouchableOpacity onPress={() => toggle('race', item.id.toString(), item)}>
-                <IconSymbol
-                  name={isFavorite('race', item.id.toString()) ? "star.fill" : "star"}
-                  size={20}
-                  color={isFavorite('race', item.id.toString()) ? "#FFD700" : "#FFF"}
-                />
-              </TouchableOpacity>
+
+              <View style={{ alignItems: 'center', gap: 12 }}>
+                <HoverScale onPress={() => toggle('race', item.id.toString(), item)}>
+                  <IconSymbol
+                    name={isFavorite('race', item.id.toString()) ? "star.fill" : "star"}
+                    size={20}
+                    color={isFavorite('race', item.id.toString()) ? "#FFD700" : "#FFF"}
+                  />
+                </HoverScale>
+                <HoverScale
+                  onPress={() => (navigation as any).navigate('RaceJournal', { raceId: item.id.toString(), raceName: item.name })}
+                >
+                  <IconSymbol
+                    name="square.and.pencil"
+                    size={20}
+                    color="#FFF"
+                  />
+                </HoverScale>
+              </View>
             </View>
 
             <View style={styles.raceInfo}>
@@ -147,7 +162,7 @@ export default function CalendarScreen() {
             </View>
           </View>
         </ImageBackground>
-      </TouchableOpacity>
+      </HoverScale>
     );
   };
 
@@ -156,7 +171,7 @@ export default function CalendarScreen() {
       <View style={[styles.header, { borderBottomColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border }]}>
         <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('calendarTitle')}</Text>
         <View style={[styles.yearToggle, { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }]}>
-          <TouchableOpacity
+          <HoverScale
             style={[styles.yearButton, selectedYear === '2025' && styles.yearActive]}
             onPress={() => setSelectedYear('2025')}
           >
@@ -165,8 +180,8 @@ export default function CalendarScreen() {
               selectedYear === '2025' && styles.yearTextActive,
               selectedYear !== '2025' && { color: themeColors.text }
             ]}>2025</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </HoverScale>
+          <HoverScale
             style={[styles.yearButton, selectedYear === '2026' && styles.yearActive]}
             onPress={() => setSelectedYear('2026')}
           >
@@ -175,7 +190,7 @@ export default function CalendarScreen() {
               selectedYear === '2026' && styles.yearTextActive,
               selectedYear !== '2026' && { color: themeColors.text }
             ]}>2026</Text>
-          </TouchableOpacity>
+          </HoverScale>
         </View>
       </View>
 
@@ -209,9 +224,9 @@ export default function CalendarScreen() {
 
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: themeColors.text }]}>{t('raceResults')}</Text>
-                <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                <HoverScale onPress={closeModal} style={styles.closeButton}>
                   <IconSymbol name="xmark.circle.fill" size={24} color={themeColors.icon} />
-                </TouchableOpacity>
+                </HoverScale>
               </View>
 
               {selectedRace && (
@@ -333,6 +348,7 @@ const styles = StyleSheet.create({
   roundInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
   roundText: {
@@ -346,12 +362,15 @@ const styles = StyleSheet.create({
   nextBadge: {
     backgroundColor: Colors.dark.primary,
     paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
+    justifyContent: 'center',
   },
   nextBadgeText: {
     color: 'white',
     fontSize: 10,
     fontWeight: 'bold',
+    lineHeight: 12,
   },
   raceInfo: {
     flexDirection: 'row',

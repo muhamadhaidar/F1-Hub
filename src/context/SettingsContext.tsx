@@ -94,6 +94,11 @@ const translations: Record<Language, Record<string, string>> = {
         calendar: 'Calendar',
         watch: 'Watch',
         profileTab: 'Profile',
+        race_journal: 'Race Journal',
+        no_notes: 'No journal entries yet. Add one from the Calendar!',
+        confirm_delete: 'Delete Note?',
+        delete_note_message: 'Are you sure you want to delete this race journal entry?',
+        write_note_placeholder: 'Write your prediction or thoughts...',
     },
     id: {
         // Settings
@@ -172,6 +177,11 @@ const translations: Record<Language, Record<string, string>> = {
         calendar: 'Kalender',
         watch: 'Tonton',
         profileTab: 'Profil',
+        race_journal: 'Jurnal Balapan',
+        no_notes: 'Belum ada entri jurnal. Tambahkan satu dari Kalender!',
+        confirm_delete: 'Hapus Catatan?',
+        delete_note_message: 'Apakah Anda yakin ingin menghapus entri jurnal balapan ini?',
+        write_note_placeholder: 'Tulis prediksi atau pikiran Anda...',
     }
 };
 

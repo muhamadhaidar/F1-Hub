@@ -142,7 +142,11 @@ export const f1Api = {
     getDriverStandings: async (year: string = 'current', limit: number = 3): Promise<any[]> => {
         try {
             const response = await api.get(`/${year}/driverStandings.json`);
-            const standings = response.data.MRData.StandingsTable.StandingsLists[0].DriverStandings;
+            const standingsList = response.data.MRData.StandingsTable.StandingsLists[0];
+
+            if (!standingsList) return [];
+
+            const standings = standingsList.DriverStandings;
 
             const sliceLimit = limit === 0 ? standings.length : limit;
             return standings.slice(0, sliceLimit).map((driver: any) => ({
@@ -162,7 +166,11 @@ export const f1Api = {
     getConstructorStandings: async (year: string = 'current', limit: number = 3): Promise<any[]> => {
         try {
             const response = await api.get(`/${year}/constructorStandings.json`);
-            const standings = response.data.MRData.StandingsTable.StandingsLists[0].ConstructorStandings;
+            const standingsList = response.data.MRData.StandingsTable.StandingsLists[0];
+
+            if (!standingsList) return [];
+
+            const standings = standingsList.ConstructorStandings;
 
             const sliceLimit = limit === 0 ? standings.length : limit;
             return standings.slice(0, sliceLimit).map((team: any) => ({

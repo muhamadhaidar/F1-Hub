@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc } from 'firebase/firestore';
 import { FavoriteItem } from './database';
 import { auth, db } from './firebaseConfig';
 
@@ -68,7 +68,7 @@ export const toggleFavorite = async (type: 'driver' | 'team' | 'race', itemId: s
                 await setDoc(userFavoritesRef, {
                     type,
                     itemId,
-                    data,
+                    data: JSON.stringify(data),
                     addedAt: new Date().toISOString()
                 });
             } else {
@@ -160,6 +160,47 @@ export const saveUserProfile = async (profile: UserProfile) => {
     }
 };
 
+// --- STORAGE HELPERS ---
+import { getDownloadURL, ref, uploadString } from 'firebase/storage';
+import { storage } from './firebaseConfig';
+
+export const uploadProfileImage = async (userId: string, uri: string): Promise<string> => {
+    try {
+        console.log("Starting upload for:", uri);
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Upload timed out (60s)")), 60000)
+        );
+
+        const uploadTask = async () => {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            console.log("Blob created:", blob.size);
+
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+            console.log("DataURL created");
+
+            const storageRef = ref(storage, `profile_photos/${userId}`);
+            await uploadString(storageRef, dataUrl, 'data_url');
+            console.log("Upload success");
+
+            return await getDownloadURL(storageRef);
+        };
+
+        // Race between upload and timeout
+        return await Promise.race([uploadTask(), timeoutPromise]);
+    } catch (e) {
+        console.error("Error uploading profile image:", e);
+        throw e;
+    }
+};
+
 // Generic Settings Helpers (Mock for Web)
 export const getSetting = async (key: string, defaultValue: string = ''): Promise<string> => {
     return localStorage.getItem(key) || defaultValue;
@@ -170,3 +211,79 @@ export const saveSetting = async (key: string, value: string) => {
 };
 
 
+// --- F1 RACE JOURNAL CRUD (Web) ---
+
+export interface JournalEntry {
+    raceId: string;
+    raceName: string;
+    note: string;
+    rating?: number;
+    category?: string;
+    updatedAt: string;
+}
+
+export const saveJournalNote = async (
+    raceId: string,
+    raceName: string,
+    note: string,
+    rating?: number,
+    category?: string
+) => {
+    const updatedAt = new Date().toISOString();
+    const key = `f1hub_journal_${raceId}`;
+    localStorage.setItem(key, JSON.stringify({ raceId, raceName, note, rating, category, updatedAt }));
+
+    if (auth.currentUser) {
+        try {
+            const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
+            await setDoc(docRef, { raceId, raceName, note, rating, category, updatedAt });
+        } catch (e) {
+            console.error('Error syncing journal to Firebase (Web)', e);
+        }
+    }
+};
+
+export const getJournalNotes = async (): Promise<JournalEntry[]> => {
+    // If online, prefer Firebase, otherwise localStorage
+    if (auth.currentUser) {
+        try {
+            const q = query(collection(db, 'users', auth.currentUser.uid, 'journal'));
+            const querySnapshot = await getDocs(q);
+            const cloudEntries = querySnapshot.docs.map(doc => doc.data() as JournalEntry);
+
+            // Sync to local
+            cloudEntries.forEach(entry => {
+                localStorage.setItem(`f1hub_journal_${entry.raceId}`, JSON.stringify(entry));
+            });
+
+            return cloudEntries;
+        } catch (e) {
+            console.error('Error getting journal from Firebase (Web)', e);
+        }
+    }
+    const entries: JournalEntry[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('f1hub_journal_')) {
+            entries.push(JSON.parse(localStorage.getItem(key)!));
+        }
+    }
+    return entries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+};
+
+export const deleteJournalNote = async (raceId: string) => {
+    localStorage.removeItem(`f1hub_journal_${raceId}`);
+    if (auth.currentUser) {
+        try {
+            const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
+            await deleteDoc(docRef);
+        } catch (e) {
+            console.error('Error deleting journal from Firebase (Web)', e);
+        }
+    }
+};
+
+export const getJournalNoteForRace = async (raceId: string): Promise<JournalEntry | null> => {
+    const json = localStorage.getItem(`f1hub_journal_${raceId}`);
+    return json ? JSON.parse(json) : null;
+};

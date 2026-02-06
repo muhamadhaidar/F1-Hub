@@ -21,7 +21,14 @@ import { getAuth } from 'firebase/auth';
 const auth = getAuth(app);
 
 // Initialize Cloud Firestore and get a reference to the service
-import { getFirestore } from 'firebase/firestore';
-const db = getFirestore(app);
+import { initializeFirestore } from 'firebase/firestore';
+const db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+});
 
-export { auth, db };
+// Initialize Cloud Storage
+import { getStorage } from 'firebase/storage';
+const storage = getStorage(app);
+
+export { auth, db, storage };
+

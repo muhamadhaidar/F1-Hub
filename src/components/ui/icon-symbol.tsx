@@ -19,6 +19,7 @@ const MAPPING = {
   'flag.checkered': 'flag',
   'play.rectangle.fill': 'ondemand-video',
   'paperplane.fill': 'send',
+  'chevron.left': 'chevron-left',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'heart.fill': 'favorite',
@@ -31,7 +32,9 @@ const MAPPING = {
   'star': 'star-border',
   'photo': 'image',
   'pencil': 'edit',
+  'square.and.pencil': 'edit',
   'camera.fill': 'camera-alt',
+  'person.fill': 'person',
 } as IconMapping;
 
 /**

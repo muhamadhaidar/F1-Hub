@@ -55,6 +55,17 @@ export const initDatabase = async () => {
         key TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS race_journal (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        raceId TEXT NOT NULL,
+        raceName TEXT NOT NULL,
+        note TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        rating INTEGER DEFAULT 0,
+        category TEXT DEFAULT 'Note',
+        UNIQUE(raceId)
+      );
     `);
 
     console.log('SQLite Database Initialized');
@@ -193,6 +204,8 @@ export const getFavorites = async (type?: string): Promise<FavoriteItem[]> => {
 
         for (const docSnap of querySnapshot.docs) {
           const d = docSnap.data();
+          const stringifiedData = typeof d.data === 'string' ? d.data : JSON.stringify(d.data || {});
+
           cloudFavorites.push({
             id: 0, // Placeholder
             type: d.type,
@@ -204,7 +217,7 @@ export const getFavorites = async (type?: string): Promise<FavoriteItem[]> => {
           // Sync to Local (Upsert)
           await dbSqlite.runAsync(
             `INSERT OR REPLACE INTO favorites (type, itemId, data, addedAt) VALUES (?, ?, ?, ?)`,
-            [d.type, d.itemId, d.data, d.addedAt]
+            [d.type, d.itemId, stringifiedData, d.addedAt]
           );
         }
 
@@ -358,6 +371,32 @@ export const saveUserProfile = async (profile: UserProfile) => {
   }
 };
 
+// --- STORAGE HELPERS ---
+import * as FileSystem from 'expo-file-system';
+import { getDownloadURL, ref, uploadString } from 'firebase/storage';
+import { storage } from './firebaseConfig';
+
+export const uploadProfileImage = async (userId: string, uri: string): Promise<string> => {
+  try {
+    // Use FileSystem to read as Base64 (Most reliable on Expo/RN)
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: 'base64',
+    });
+
+    const storageRef = ref(storage, `profile_photos/${userId}`);
+
+    // Upload Base64 string
+    await uploadString(storageRef, base64, 'base64', {
+      contentType: 'image/jpeg',
+    });
+
+    return await getDownloadURL(storageRef);
+  } catch (e) {
+    console.error("Error uploading profile image:", e);
+    throw e;
+  }
+};
+
 // Generic Settings Helpers
 export const getSetting = async (key: string, defaultValue: string = ''): Promise<string> => {
   if (Platform.OS === 'web') {
@@ -383,5 +422,138 @@ export const saveSetting = async (key: string, value: string) => {
     await db.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
   } catch (error) {
     console.error(`Error saving setting ${key}:`, error);
+  }
+};
+
+// --- F1 RACE JOURNAL CRUD ---
+
+export interface JournalEntry {
+  id?: number;
+  raceId: string;
+  raceName: string;
+  note: string;
+  rating?: number; // 1-5
+  category?: 'Prediction' | 'Note' | 'Memory' | 'Technical';
+  updatedAt: string;
+}
+
+export const saveJournalNote = async (
+  raceId: string,
+  raceName: string,
+  note: string,
+  rating?: number,
+  category?: string
+) => {
+  const updatedAt = new Date().toISOString();
+
+  if (Platform.OS === 'web') {
+    const key = `f1hub_journal_${raceId}`;
+    localStorage.setItem(key, JSON.stringify({ raceId, raceName, note, rating, category, updatedAt }));
+
+    if (auth.currentUser) {
+      try {
+        const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
+        await setDoc(docRef, { raceId, raceName, note, rating, category, updatedAt });
+      } catch (e) {
+        console.error('Error syncing journal to Firebase', e);
+      }
+    }
+    return;
+  }
+
+  try {
+    const dbSqlite = await SQLite.openDatabaseAsync(USER_DB_NAME);
+    // Check if table needs update (simplified for now: just replace)
+    await dbSqlite.runAsync(
+      `INSERT OR REPLACE INTO race_journal (raceId, raceName, note, updatedAt, rating, category) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [raceId, raceName, note, updatedAt, rating || 0, category || 'Note']
+    );
+
+    const netState = await NetInfo.fetch();
+    if (netState.isConnected && netState.isInternetReachable && auth.currentUser) {
+      const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
+      await setDoc(docRef, { raceId, raceName, note, rating, category, updatedAt });
+    }
+  } catch (error) {
+    console.error('Error saving journal note:', error);
+    throw error;
+  }
+};
+
+export const getJournalNotes = async (): Promise<JournalEntry[]> => {
+  if (Platform.OS === 'web') {
+    // For web, if online, get from Firebase, otherwise localstorage
+    if (auth.currentUser) {
+      try {
+        const q = query(collection(db, 'users', auth.currentUser.uid, 'journal'));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as JournalEntry);
+      } catch (e) {
+        console.error('Error getting journal from Firebase', e);
+      }
+    }
+    // Fallback to searching localStorage keys (not ideal for web, but works for mock)
+    const entries: JournalEntry[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('f1hub_journal_')) {
+        entries.push(JSON.parse(localStorage.getItem(key)!));
+      }
+    }
+    return entries;
+  }
+
+  try {
+    const dbSqlite = await SQLite.openDatabaseAsync(USER_DB_NAME);
+    const rows = await dbSqlite.getAllAsync('SELECT * FROM race_journal ORDER BY updatedAt DESC');
+    return rows as JournalEntry[];
+  } catch (error) {
+    console.error('Error getting journal notes:', error);
+    return [];
+  }
+};
+
+export const deleteJournalNote = async (raceId: string) => {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(`f1hub_journal_${raceId}`);
+    if (auth.currentUser) {
+      try {
+        const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
+        await deleteDoc(docRef);
+      } catch (e) {
+        console.error('Error deleting journal from Firebase', e);
+      }
+    }
+    return;
+  }
+
+  try {
+    const dbSqlite = await SQLite.openDatabaseAsync(USER_DB_NAME);
+    await dbSqlite.runAsync('DELETE FROM race_journal WHERE raceId = ?', [raceId]);
+
+    const netState = await NetInfo.fetch();
+    if (netState.isConnected && netState.isInternetReachable && auth.currentUser) {
+      const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
+      await deleteDoc(docRef);
+    }
+  } catch (error) {
+    console.error('Error deleting journal note:', error);
+    throw error;
+  }
+};
+
+export const getJournalNoteForRace = async (raceId: string): Promise<JournalEntry | null> => {
+  if (Platform.OS === 'web') {
+    const json = localStorage.getItem(`f1hub_journal_${raceId}`);
+    return json ? JSON.parse(json) : null;
+  }
+  try {
+    const dbSqlite = await SQLite.openDatabaseAsync(USER_DB_NAME);
+    const result = await dbSqlite.getFirstAsync('SELECT * FROM race_journal WHERE raceId = ?', [raceId]);
+    return result as JournalEntry | null;
+  } catch (error) {
+    console.error('Error getting race journal note:', error);
+    return null;
   }
 };
