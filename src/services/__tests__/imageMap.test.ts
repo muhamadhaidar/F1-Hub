@@ -1,14 +1,16 @@
-import { DRIVER_IMAGES, getDriverImageUrl } from '../imageMap';
+import { getDriverImageUrl } from '../imageMap';
 
 describe('imageMap', () => {
-    it('returns the correct local asset for verstsappen', () => {
+    it('returns the correct official url for verstsappen', () => {
         const image = getDriverImageUrl('verstappen');
-        expect(image).toBe(DRIVER_IMAGES['verstappen']);
+        expect(typeof image).toBe('string');
+        expect(image).toContain('https://media.formula1.com');
     });
 
-    it('returns the correct local asset for max_verstappen', () => {
+    it('returns the correct official url for max_verstappen', () => {
         const image = getDriverImageUrl('max_verstappen');
-        expect(image).toBe(DRIVER_IMAGES['max_verstappen']);
+        expect(typeof image).toBe('string');
+        expect(image).toContain('https://media.formula1.com');
     });
 
     it('returns the default image for unknown driver', () => {
