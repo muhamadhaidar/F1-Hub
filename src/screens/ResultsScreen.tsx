@@ -1,15 +1,29 @@
 import { Colors } from '@/constants/theme';
-import { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { f1Api } from '@/services/api';
-import { useEffect } from 'react';
-import { ActivityIndicator } from 'react-native';
-
-// Removed MOCK_RESULTS
-
 type SessionType = 'Practice' | 'Qualifying' | 'Race';
+
+const ResultRow = React.memo(({ item }: { item: any }) => (
+    <View style={styles.row}>
+        <View style={styles.posCell}>
+            <View style={[styles.posBadge, item.pos === 1 && styles.pos1]}>
+                <Text style={[styles.posText, item.pos === 1 && styles.pos1Text]}>{item.pos}</Text>
+            </View>
+        </View>
+        <View style={styles.driverCell}>
+            <View style={[styles.teamLine, { backgroundColor: item.team.includes('Red Bull') ? '#061D41' : (item.team.includes('Ferrari') ? '#EF1A2D' : '#00A19B') }]} />
+            <View>
+                <Text style={styles.driverText}>{item.driver}</Text>
+                <Text style={styles.teamText}>{item.team}</Text>
+            </View>
+        </View>
+        <Text style={styles.timeText}>{item.time}</Text>
+        <Text style={styles.ptsText}>{item.pts}</Text>
+    </View>
+));
 
 export default function ResultsScreen() {
     const [selectedSession, setSelectedSession] = useState<SessionType>('Race');
@@ -33,24 +47,9 @@ export default function ResultsScreen() {
         setLoading(false);
     };
 
-    const renderRow = ({ item }: { item: any }) => (
-        <View style={styles.row}>
-            <View style={styles.posCell}>
-                <View style={[styles.posBadge, item.pos === 1 && styles.pos1]}>
-                    <Text style={[styles.posText, item.pos === 1 && styles.pos1Text]}>{item.pos}</Text>
-                </View>
-            </View>
-            <View style={styles.driverCell}>
-                <View style={[styles.teamLine, { backgroundColor: item.team.includes('Red Bull') ? '#061D41' : (item.team.includes('Ferrari') ? '#EF1A2D' : '#00A19B') }]} />
-                <View>
-                    <Text style={styles.driverText}>{item.driver}</Text>
-                    <Text style={styles.teamText}>{item.team}</Text>
-                </View>
-            </View>
-            <Text style={styles.timeText}>{item.time}</Text>
-            <Text style={styles.ptsText}>{item.pts}</Text>
-        </View>
-    );
+    const renderRow = React.useCallback(({ item }: { item: any }) => (
+        <ResultRow item={item} />
+    ), []);
 
     return (
         <SafeAreaView style={styles.container}>

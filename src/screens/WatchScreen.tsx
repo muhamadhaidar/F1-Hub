@@ -61,18 +61,7 @@ export default function WatchScreen() {
                     <Text style={[styles.headerSubtitle, { color: themeColors.icon }]}>{t('watchSubtitle')}</Text>
                 </View>
 
-                {/* Filter Pills */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-                    <TouchableOpacity style={[styles.filterPill, styles.filterActive, { borderColor: Colors.dark.primary }]}>
-                        <Text style={styles.filterTextActive}>{t('filterAll')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterPill, { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border }]}>
-                        <Text style={[styles.filterText, { color: themeColors.text }]}>{t('filterHighlights')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterPill, { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border }]}>
-                        <Text style={[styles.filterText, { color: themeColors.text }]}>{t('filterTopMoments')}</Text>
-                    </TouchableOpacity>
-                </ScrollView>
+
 
                 {/* Hero Video Card */}
                 <TouchableOpacity
@@ -150,35 +139,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 4,
     },
-    filterScroll: {
-        marginBottom: 20,
-    },
-    filterContent: {
-        paddingHorizontal: 20,
-        gap: 10,
-    },
-    filterPill: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: Colors.dark.card,
-        borderWidth: 1,
-        borderColor: Colors.dark.border,
-    },
-    filterActive: {
-        backgroundColor: Colors.dark.primary,
-        borderColor: Colors.dark.primary,
-    },
-    filterText: {
-        color: Colors.dark.text,
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    filterTextActive: {
-        color: '#FFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
+
     heroCard: {
         marginHorizontal: 20,
         height: 220,

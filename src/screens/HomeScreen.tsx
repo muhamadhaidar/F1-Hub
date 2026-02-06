@@ -13,6 +13,68 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HoverScale } from '@/components/ui/HoverScale';
 import { useSettings } from '@/context/SettingsContext';
 
+const UpcomingRaceCard = React.memo(({ item, isDesktop, themeColors, isFav, toggle, t }: any) => (
+    <HoverScale
+        style={[
+            styles.upcomingCardContainer,
+            isDesktop && { width: 250, marginRight: 16 },
+            {
+                backgroundColor: themeColors.card,
+                borderWidth: 1,
+                borderColor: themeColors.border || (themeColors.card === '#FFF' ? '#eee' : 'transparent')
+            }
+        ]}
+    >
+        <ImageBackground
+            source={{ uri: getRaceImage(item.circuit.country) }}
+            style={styles.upcomingCardImage}
+            imageStyle={{ borderRadius: 12 }}
+            resizeMode="cover"
+        >
+            <View style={styles.upcomingOverlay}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Text style={styles.upcomingRound}>R{item.round}</Text>
+                    <TouchableOpacity onPress={() => toggle('race', item.id, item)}>
+                        <IconSymbol
+                            name={isFav ? "star.fill" : "star"}
+                            size={20}
+                            color={isFav ? "#FFD700" : "#FFF"}
+                        />
+                    </TouchableOpacity>
+                </View>
+                <View>
+                    <Text style={styles.upcomingCountryCode}>{item.circuit.country.substring(0, 3).toUpperCase()}</Text>
+                    <Text style={styles.upcomingRaceName} numberOfLines={1}>{item.name}</Text>
+                </View>
+                <Text style={styles.upcomingDate}>{format(new Date(item.date), 'MMM dd')}</Text>
+            </View>
+        </ImageBackground>
+    </HoverScale>
+));
+
+const StandingRow = React.memo(({ item, type, isFav, toggle, themeColors, resolvedTheme, t }: any) => (
+    <View style={[styles.standingRow, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
+        <Text style={[styles.standingPos, { color: themeColors.text }]}>#{item.position}</Text>
+        <View style={styles.driverInfo}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.driverName, { color: themeColors.text }]}>{type === 'driver' ? item.driver : item.team}</Text>
+                <TouchableOpacity hitSlop={10} onPress={() => toggle(type, type === 'driver' ? item.driverId : item.teamId, item)}>
+                    <IconSymbol name={isFav ? "heart.fill" : "heart"} size={16} color={isFav ? Colors.dark.primary : (resolvedTheme === 'dark' ? "#888" : "#ccc")} />
+                </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.teamName, { color: themeColors.icon }]}>
+                    {type === 'driver' ? item.team : `${t('wins')}: ${item.wins}`}
+                </Text>
+            </View>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.pointsText, { color: themeColors.text }]}>{item.points}</Text>
+            <Text style={[styles.ptsLabel, { color: themeColors.icon }]}>{t('points')}</Text>
+        </View>
+    </View>
+));
+
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const { width } = useWindowDimensions();
@@ -121,47 +183,16 @@ export default function HomeScreen() {
                             showsHorizontalScrollIndicator={false}
                             keyExtractor={(item) => item.id}
                             contentContainerStyle={{ paddingHorizontal: 20 }}
-                            renderItem={({ item }) => {
-                                const isFav = isFavorite('race', item.id);
-                                return (
-                                    <HoverScale
-                                        style={[
-                                            styles.upcomingCardContainer,
-                                            isDesktop && { width: 250, marginRight: 16 },
-                                            {
-                                                backgroundColor: themeColors.card,
-                                                borderWidth: 1, // Add border for visibility in light mode
-                                                borderColor: resolvedTheme === 'dark' ? 'transparent' : '#eee'
-                                            }
-                                        ]}
-                                    >
-                                        <ImageBackground
-                                            source={{ uri: getRaceImage(item.circuit.country) }}
-                                            style={styles.upcomingCardImage}
-                                            imageStyle={{ borderRadius: 12 }}
-                                            resizeMode="cover"
-                                        >
-                                            <View style={styles.upcomingOverlay}>
-                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <Text style={styles.upcomingRound}>R{item.round}</Text>
-                                                    <TouchableOpacity onPress={() => toggle('race', item.id, item)}>
-                                                        <IconSymbol
-                                                            name={isFav ? "star.fill" : "star"}
-                                                            size={20}
-                                                            color={isFav ? "#FFD700" : "#FFF"}
-                                                        />
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <View>
-                                                    <Text style={styles.upcomingCountryCode}>{item.circuit.country.substring(0, 3).toUpperCase()}</Text>
-                                                    <Text style={styles.upcomingRaceName} numberOfLines={1}>{item.name}</Text>
-                                                </View>
-                                                <Text style={styles.upcomingDate}>{format(new Date(item.date), 'MMM dd')}</Text>
-                                            </View>
-                                        </ImageBackground>
-                                    </HoverScale>
-                                );
-                            }}
+                            renderItem={({ item }) => (
+                                <UpcomingRaceCard
+                                    item={item}
+                                    isDesktop={isDesktop}
+                                    themeColors={themeColors}
+                                    isFav={isFavorite('race', item.id)}
+                                    toggle={toggle}
+                                    t={t}
+                                />
+                            )}
                         />
 
                         {/* RECENT GRAND PRIX */}
@@ -201,69 +232,51 @@ export default function HomeScreen() {
                         {/* DRIVER STANDINGS */}
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('driverStandings')}</Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Standings' as any, { type: 'driver' })}>
+                            <TouchableOpacity
+                                testID="go-to-standings-driver"
+                                onPress={() => navigation.navigate('Standings' as any, { type: 'driver' })}
+                            >
                                 <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
                             </TouchableOpacity>
                         </View>
                         <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
-                            {standings.map((driver) => {
-                                const isDriverFav = isFavorite('driver', driver.driverId);
-
-                                return (
-                                    <View key={driver.position} style={[styles.standingRow, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
-                                        <Text style={[styles.standingPos, { color: themeColors.text }]}>#{driver.position}</Text>
-                                        <View style={styles.driverInfo}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={[styles.driverName, { color: themeColors.text }]}>{driver.driver}</Text>
-                                                <TouchableOpacity hitSlop={10} onPress={() => toggle('driver', driver.driverId, driver)}>
-                                                    <IconSymbol name={isDriverFav ? "heart.fill" : "heart"} size={16} color={isDriverFav ? Colors.dark.primary : (resolvedTheme === 'dark' ? "#888" : "#ccc")} />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={[styles.teamName, { color: themeColors.icon }]}>{driver.team}</Text>
-                                            </View>
-                                        </View>
-                                        <View style={{ alignItems: 'flex-end' }}>
-                                            <Text style={[styles.pointsText, { color: themeColors.text }]}>{driver.points}</Text>
-                                            <Text style={[styles.ptsLabel, { color: themeColors.icon }]}>{t('points')}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            })}
+                            {standings.map((driver) => (
+                                <StandingRow
+                                    key={driver.position}
+                                    item={driver}
+                                    type="driver"
+                                    isFav={isFavorite('driver', driver.driverId)}
+                                    toggle={toggle}
+                                    themeColors={themeColors}
+                                    resolvedTheme={resolvedTheme}
+                                    t={t}
+                                />
+                            ))}
                         </HoverScale>
 
                         {/* CONSTRUCTOR STANDINGS */}
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('constructorStandings')}</Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Standings' as any, { type: 'constructor' })}>
+                            <TouchableOpacity
+                                testID="go-to-standings-team"
+                                onPress={() => navigation.navigate('Standings' as any, { type: 'constructor' })}
+                            >
                                 <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
                             </TouchableOpacity>
                         </View>
                         <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
-                            {constructorStandings.map((team) => {
-                                const isTeamFav = isFavorite('team', team.teamId);
-
-                                return (
-                                    <View key={team.position} style={[styles.standingRow, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
-                                        <Text style={[styles.standingPos, { color: themeColors.text }]}>#{team.position}</Text>
-                                        <View style={styles.driverInfo}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={[styles.driverName, { color: themeColors.text }]}>{team.team}</Text>
-                                                <TouchableOpacity hitSlop={10} onPress={() => toggle('team', team.teamId, team)}>
-                                                    <IconSymbol name={isTeamFav ? "heart.fill" : "heart"} size={16} color={isTeamFav ? Colors.dark.primary : (resolvedTheme === 'dark' ? "#888" : "#ccc")} />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Text style={[styles.teamName, { color: themeColors.icon }]}>{t('wins')}: {team.wins}</Text>
-                                            </View>
-                                        </View>
-                                        <View style={{ alignItems: 'flex-end' }}>
-                                            <Text style={[styles.pointsText, { color: themeColors.text }]}>{team.points}</Text>
-                                            <Text style={[styles.ptsLabel, { color: themeColors.icon }]}>{t('points')}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            })}
+                            {constructorStandings.map((team) => (
+                                <StandingRow
+                                    key={team.position}
+                                    item={team}
+                                    type="team"
+                                    isFav={isFavorite('team', team.teamId)}
+                                    toggle={toggle}
+                                    themeColors={themeColors}
+                                    resolvedTheme={resolvedTheme}
+                                    t={t}
+                                />
+                            ))}
                         </HoverScale>
                     </>
                 )}

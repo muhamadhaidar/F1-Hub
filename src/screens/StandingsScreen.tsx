@@ -10,6 +10,52 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 type StandingsType = 'driver' | 'constructor';
 
+const DriverStandingItem = React.memo(({ item, themeColors, isFavorite, onToggle, t }: any) => (
+    <View style={[styles.row, { backgroundColor: themeColors.card }]}>
+        <Text style={[styles.pos, { color: themeColors.text }]}>#{item.position}</Text>
+        <View style={styles.info}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.name, { color: themeColors.text }]}>{item.driver}</Text>
+                <TouchableOpacity onPress={() => onToggle('driver', item.driverId, item)}>
+                    <IconSymbol
+                        name={isFavorite('driver', item.driverId) ? "heart.fill" : "heart"}
+                        size={16}
+                        color={isFavorite('driver', item.driverId) ? Colors.dark.primary : (themeColors.icon)}
+                    />
+                </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.subtext, { color: themeColors.icon }]}>{item.team}</Text>
+            </View>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.points, { color: themeColors.text }]}>{item.points} pts</Text>
+        </View>
+    </View>
+));
+
+const ConstructorStandingItem = React.memo(({ item, themeColors, isFavorite, onToggle, t }: any) => (
+    <View style={[styles.row, { backgroundColor: themeColors.card }]}>
+        <Text style={[styles.pos, { color: themeColors.text }]}>#{item.position}</Text>
+        <View style={styles.info}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={[styles.name, { color: themeColors.text }]}>{item.team}</Text>
+                <TouchableOpacity onPress={() => onToggle('team', item.teamId, item)}>
+                    <IconSymbol
+                        name={isFavorite('team', item.teamId) ? "heart.fill" : "heart"}
+                        size={16}
+                        color={isFavorite('team', item.teamId) ? Colors.dark.primary : (themeColors.icon)}
+                    />
+                </TouchableOpacity>
+            </View>
+            <Text style={[styles.subtext, { color: themeColors.icon }]}>{t('wins')}: {item.wins}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.points, { color: themeColors.text }]}>{item.points} {t('points')}</Text>
+        </View>
+    </View>
+));
+
 export default function StandingsScreen() {
     const route = useRoute<any>();
     const navigation = useNavigation();
@@ -42,46 +88,30 @@ export default function StandingsScreen() {
         }
     };
 
+    const handleToggle = React.useCallback((type: any, id: any, item: any) => {
+        toggle(type, id, item);
+    }, [toggle]);
+
     const renderItem = ({ item }: { item: any }) => {
         if (initialType === 'driver') {
-            const isDriverFav = isFavorite('driver', item.driverId);
-            const isTeamFav = isFavorite('team', item.teamId);
-            return (<View style={[styles.row, { backgroundColor: themeColors.card }]}>
-                <Text style={[styles.pos, { color: themeColors.text }]}>#{item.position}</Text>
-                <View style={styles.info}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.name, { color: themeColors.text }]}>{item.driver}</Text>
-                        <TouchableOpacity onPress={() => toggle('driver', item.driverId, item)}>
-                            <IconSymbol name={isDriverFav ? "heart.fill" : "heart"} size={16} color={isDriverFav ? Colors.dark.primary : (resolvedTheme === 'dark' ? "#888" : "#ccc")} />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.subtext, { color: themeColors.icon }]}>{item.team}</Text>
-                    </View>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.points, { color: themeColors.text }]}>{item.points} pts</Text>
-                </View>
-            </View>
+            return (
+                <DriverStandingItem
+                    item={item}
+                    themeColors={themeColors}
+                    isFavorite={isFavorite}
+                    onToggle={handleToggle}
+                    t={t}
+                />
             );
         } else {
-            const isTeamFav = isFavorite('team', item.teamId);
             return (
-                <View style={[styles.row, { backgroundColor: themeColors.card }]}>
-                    <Text style={[styles.pos, { color: themeColors.text }]}>#{item.position}</Text>
-                    <View style={styles.info}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={[styles.name, { color: themeColors.text }]}>{item.team}</Text>
-                            <TouchableOpacity onPress={() => toggle('team', item.teamId, item)}>
-                                <IconSymbol name={isTeamFav ? "heart.fill" : "heart"} size={16} color={isTeamFav ? Colors.dark.primary : (resolvedTheme === 'dark' ? "#888" : "#ccc")} />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={[styles.subtext, { color: themeColors.icon }]}>{t('wins')}: {item.wins}</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={[styles.points, { color: themeColors.text }]}>{item.points} {t('points')}</Text>
-                    </View>
-                </View>
+                <ConstructorStandingItem
+                    item={item}
+                    themeColors={themeColors}
+                    isFavorite={isFavorite}
+                    onToggle={handleToggle}
+                    t={t}
+                />
             );
         }
     };
