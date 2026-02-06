@@ -10,9 +10,11 @@ interface HoverScaleProps {
     activeScale?: number; // Scale when pressed
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function HoverScale({
     children,
-    scaleTo = 1.08,
+    scaleTo = 1.02,
     style,
     onPress,
     activeScale = 0.95
@@ -61,17 +63,15 @@ export function HoverScale({
     };
 
     return (
-        <Animated.View style={[style, animatedStyle]}>
-            <Pressable
-                onPress={onPress}
-                onHoverIn={handleHoverIn}
-                onHoverOut={handleHoverOut}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                style={{ flex: 1 }}
-            >
-                {children}
-            </Pressable>
-        </Animated.View>
+        <AnimatedPressable
+            onPress={onPress}
+            onHoverIn={handleHoverIn}
+            onHoverOut={handleHoverOut}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            style={[style, animatedStyle]}
+        >
+            {children}
+        </AnimatedPressable>
     );
 }

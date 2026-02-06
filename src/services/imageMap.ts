@@ -1,8 +1,10 @@
 // Mapping of Driver IDs to High-Quality Image URLs
 // Using stable Wikimedia/F1.com sources where possible
-export const DRIVER_IMAGES: { [key: string]: string } = {
+export const DRIVER_IMAGES: { [key: string]: any } = {
     // Top Drivers - Handpicked Wikimedia Commons High-Res Potraits
-    'verstappen': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Max_Verstappen_2017_Malaysia_3.jpg/800px-Max_Verstappen_2017_Malaysia_3.jpg',
+    'verstappen': require('../../assets/Driver/maxverstaphen.png'),
+    'max_verstappen': require('../../assets/Driver/maxverstaphen.png'),
+    'checo_perez': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Sergio_Perez_2019_Singapore_GP.jpg/800px-Sergio_Perez_2019_Singapore_GP.jpg',
     'perez': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Sergio_Perez_2019_Singapore_GP.jpg/800px-Sergio_Perez_2019_Singapore_GP.jpg',
     'hamilton': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Lewis_Hamilton_2016_Malaysia_2.jpg/800px-Lewis_Hamilton_2016_Malaysia_2.jpg',
     'russell': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/George_Russell_2019_Singapore_GP_2.jpg/800px-George_Russell_2019_Singapore_GP_2.jpg',
@@ -46,7 +48,7 @@ export const TEAM_LOGOS: { [key: string]: any } = {
 const DEFAULT_DRIVER_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Default_pfp.jpg/600px-Default_pfp.jpg';
 const DEFAULT_TEAM_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/F1.svg/1200px-F1.svg.png';
 
-export const getDriverImageUrl = (driverId: string): string => {
+export const getDriverImageUrl = (driverId: string): any => {
     return DRIVER_IMAGES[driverId] || DEFAULT_DRIVER_IMAGE;
 };
 

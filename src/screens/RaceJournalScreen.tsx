@@ -127,7 +127,25 @@ export default function RaceJournalScreen() {
         }
     };
 
+    const performDelete = async (raceId: string) => {
+        try {
+            await deleteJournalNote(raceId);
+            loadNotes();
+        } catch (error) {
+            console.error('Delete error:', error);
+            Alert.alert('Error', 'Failed to delete note');
+        }
+    };
+
     const handleDelete = (raceId: string) => {
+        if (Platform.OS === 'web') {
+            // Web compliant confirmation
+            if (window.confirm(t('delete_note_message'))) {
+                performDelete(raceId);
+            }
+            return;
+        }
+
         Alert.alert(
             t('confirm_delete'),
             t('delete_note_message'),
@@ -136,14 +154,7 @@ export default function RaceJournalScreen() {
                 {
                     text: t('delete'),
                     style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await deleteJournalNote(raceId);
-                            loadNotes();
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to delete note');
-                        }
-                    }
+                    onPress: () => performDelete(raceId)
                 }
             ]
         );

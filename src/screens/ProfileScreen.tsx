@@ -147,7 +147,7 @@ export default function ProfileScreen() {
             return drivers.map((driver: any) => (
                 <HoverScale key={driver.driverId} style={styles.driverLargeCard}>
                     <ImageBackground
-                        source={{ uri: getDriverImageUrl(driver.driverId) }}
+                        source={typeof getDriverImageUrl(driver.driverId) === 'string' ? { uri: getDriverImageUrl(driver.driverId) } : getDriverImageUrl(driver.driverId)}
                         style={styles.driverCardBackground}
                         imageStyle={{ borderRadius: 12, opacity: 0.8 }}
                         resizeMode="cover"

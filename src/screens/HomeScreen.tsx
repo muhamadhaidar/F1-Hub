@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HoverScale } from '@/components/ui/HoverScale';
 import { useSettings } from '@/context/SettingsContext';
 
 export default function HomeScreen() {
@@ -72,7 +73,7 @@ export default function HomeScreen() {
                     <>
                         {/* NEXT RACE CARD */}
                         {nextRace ? (
-                            <View style={[styles.heroCard, { backgroundColor: themeColors.card, borderColor: Colors.dark.primary }]}>
+                            <HoverScale style={[styles.heroCard, { backgroundColor: themeColors.card, borderColor: Colors.dark.primary }]}>
                                 <ImageBackground
                                     source={{ uri: getRaceImage(nextRace.circuit.country) }}
                                     style={styles.heroImage}
@@ -102,7 +103,7 @@ export default function HomeScreen() {
                                         </View>
                                     </View>
                                 </ImageBackground>
-                            </View>
+                            </HoverScale>
                         ) : null}
 
                         {/* UPCOMING RACES */}
@@ -123,7 +124,7 @@ export default function HomeScreen() {
                             renderItem={({ item }) => {
                                 const isFav = isFavorite('race', item.id);
                                 return (
-                                    <View
+                                    <HoverScale
                                         style={[
                                             styles.upcomingCardContainer,
                                             isDesktop && { width: 250, marginRight: 16 },
@@ -158,7 +159,7 @@ export default function HomeScreen() {
                                                 <Text style={styles.upcomingDate}>{format(new Date(item.date), 'MMM dd')}</Text>
                                             </View>
                                         </ImageBackground>
-                                    </View>
+                                    </HoverScale>
                                 );
                             }}
                         />
@@ -172,7 +173,7 @@ export default function HomeScreen() {
                                         <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
                                     </TouchableOpacity>
                                 </View>
-                                <View style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
+                                <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
                                     <View style={styles.statsHeader}>
                                         <IconSymbol name="flag.fill" size={16} color={Colors.dark.primary} />
                                         <Text style={[styles.statsTitle, { color: themeColors.text }]}>{lastResults.raceName}</Text>
@@ -193,7 +194,7 @@ export default function HomeScreen() {
                                             </View>
                                         ))}
                                     </View>
-                                </View>
+                                </HoverScale>
                             </>
                         ) : null}
 
@@ -204,7 +205,7 @@ export default function HomeScreen() {
                                 <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
                             </TouchableOpacity>
                         </View>
-                        <View style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
+                        <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
                             {standings.map((driver) => {
                                 const isDriverFav = isFavorite('driver', driver.driverId);
 
@@ -229,7 +230,7 @@ export default function HomeScreen() {
                                     </View>
                                 );
                             })}
-                        </View>
+                        </HoverScale>
 
                         {/* CONSTRUCTOR STANDINGS */}
                         <View style={styles.sectionHeader}>
@@ -238,7 +239,7 @@ export default function HomeScreen() {
                                 <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
                             </TouchableOpacity>
                         </View>
-                        <View style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
+                        <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
                             {constructorStandings.map((team) => {
                                 const isTeamFav = isFavorite('team', team.teamId);
 
@@ -263,7 +264,7 @@ export default function HomeScreen() {
                                     </View>
                                 );
                             })}
-                        </View>
+                        </HoverScale>
                     </>
                 )}
             </ScrollView>
