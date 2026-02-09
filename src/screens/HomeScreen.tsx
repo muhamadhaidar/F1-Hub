@@ -76,7 +76,7 @@ const StandingRow = React.memo(({ item, type, isFav, toggle, themeColors, resolv
 ));
 
 export default function HomeScreen() {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
     const { width } = useWindowDimensions();
     const isDesktop = width > 768; // Desktop breakpoint
     const { isFavorite, toggle } = useFavorites();
@@ -181,9 +181,9 @@ export default function HomeScreen() {
                             data={upcomingRaces}
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            keyExtractor={(item) => item.id}
+                            keyExtractor={(item: any) => item.id}
                             contentContainerStyle={{ paddingHorizontal: 20 }}
-                            renderItem={({ item }) => (
+                            renderItem={({ item }: { item: any }) => (
                                 <UpcomingRaceCard
                                     item={item}
                                     isDesktop={isDesktop}
@@ -229,55 +229,62 @@ export default function HomeScreen() {
                             </>
                         ) : null}
 
-                        {/* DRIVER STANDINGS */}
-                        <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('driverStandings')}</Text>
-                            <TouchableOpacity
-                                testID="go-to-standings-driver"
-                                onPress={() => navigation.navigate('Standings' as any, { type: 'driver' })}
-                            >
-                                <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
-                            </TouchableOpacity>
-                        </View>
-                        <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
-                            {standings.map((driver) => (
-                                <StandingRow
-                                    key={driver.position}
-                                    item={driver}
-                                    type="driver"
-                                    isFav={isFavorite('driver', driver.driverId)}
-                                    toggle={toggle}
-                                    themeColors={themeColors}
-                                    resolvedTheme={resolvedTheme}
-                                    t={t}
-                                />
-                            ))}
-                        </HoverScale>
+                        {/* STANDINGS SECTION - Side by side on Desktop */}
+                        <View style={[isDesktop && styles.desktopStandingsRow]}>
+                            {/* DRIVER STANDINGS */}
+                            <View style={[isDesktop && styles.desktopStandingsCol]}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('driverStandings')}</Text>
+                                    <TouchableOpacity
+                                        testID="go-to-standings-driver"
+                                        onPress={() => navigation.navigate('Standings' as any, { type: 'driver' })}
+                                    >
+                                        <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
+                                    </TouchableOpacity>
+                                </View>
+                                <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
+                                    {standings.map((driver) => (
+                                        <StandingRow
+                                            key={driver.position}
+                                            item={driver}
+                                            type="driver"
+                                            isFav={isFavorite('driver', driver.driverId)}
+                                            toggle={toggle}
+                                            themeColors={themeColors}
+                                            resolvedTheme={resolvedTheme}
+                                            t={t}
+                                        />
+                                    ))}
+                                </HoverScale>
+                            </View>
 
-                        {/* CONSTRUCTOR STANDINGS */}
-                        <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('constructorStandings')}</Text>
-                            <TouchableOpacity
-                                testID="go-to-standings-team"
-                                onPress={() => navigation.navigate('Standings' as any, { type: 'constructor' })}
-                            >
-                                <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
-                            </TouchableOpacity>
+                            {/* CONSTRUCTOR STANDINGS */}
+                            <View style={[isDesktop && styles.desktopStandingsCol]}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('constructorStandings')}</Text>
+                                    <TouchableOpacity
+                                        testID="go-to-standings-team"
+                                        onPress={() => navigation.navigate('Standings' as any, { type: 'constructor' })}
+                                    >
+                                        <IconSymbol name="chevron.right" size={20} color={Colors.dark.icon} />
+                                    </TouchableOpacity>
+                                </View>
+                                <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
+                                    {constructorStandings.map((team) => (
+                                        <StandingRow
+                                            key={team.position}
+                                            item={team}
+                                            type="team"
+                                            isFav={isFavorite('team', team.teamId)}
+                                            toggle={toggle}
+                                            themeColors={themeColors}
+                                            resolvedTheme={resolvedTheme}
+                                            t={t}
+                                        />
+                                    ))}
+                                </HoverScale>
+                            </View>
                         </View>
-                        <HoverScale style={[styles.statsCard, { backgroundColor: themeColors.card }]}>
-                            {constructorStandings.map((team) => (
-                                <StandingRow
-                                    key={team.position}
-                                    item={team}
-                                    type="team"
-                                    isFav={isFavorite('team', team.teamId)}
-                                    toggle={toggle}
-                                    themeColors={themeColors}
-                                    resolvedTheme={resolvedTheme}
-                                    t={t}
-                                />
-                            ))}
-                        </HoverScale>
                     </>
                 )}
             </ScrollView>
@@ -293,6 +300,9 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: 16,
         paddingBottom: 40,
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     header: {
         marginBottom: 20,
@@ -520,5 +530,12 @@ const styles = StyleSheet.create({
     ptsLabel: {
         color: '#666',
         fontSize: 10,
+    },
+    desktopStandingsRow: {
+        flexDirection: 'row',
+        gap: 20,
+    },
+    desktopStandingsCol: {
+        flex: 1,
     }
 });

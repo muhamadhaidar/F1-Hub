@@ -1,8 +1,10 @@
 import NetInfo from '@react-native-community/netinfo';
+import * as FileSystem from 'expo-file-system';
 import * as SQLite from 'expo-sqlite';
 import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 import { Platform } from 'react-native';
-import { auth, db } from './firebaseConfig';
+import { auth, db, storage } from './firebaseConfig';
 
 export const USER_DB_NAME = 'f1hub_user.db';
 const LOCAL_STORAGE_KEY = 'f1hub_favorites';
@@ -42,31 +44,31 @@ export const initDatabase = async () => {
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       
-      CREATE TABLE IF NOT EXISTS favorites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL, -- 'driver', 'team', 'race'
+      CREATE TABLE IF NOT EXISTS favorites(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL, -- 'driver', 'team', 'race'
         itemId TEXT NOT NULL,
-        data TEXT, -- JSON string for display details
+  data TEXT, --JSON string for display details
         addedAt TEXT,
-        UNIQUE(type, itemId)
+    UNIQUE(type, itemId)
       );
 
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
+      CREATE TABLE IF NOT EXISTS settings(
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
 
-      CREATE TABLE IF NOT EXISTS race_journal (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        raceId TEXT NOT NULL,
-        raceName TEXT NOT NULL,
-        note TEXT NOT NULL,
-        updatedAt TEXT NOT NULL,
-        rating INTEGER DEFAULT 0,
-        category TEXT DEFAULT 'Note',
-        UNIQUE(raceId)
-      );
-    `);
+      CREATE TABLE IF NOT EXISTS race_journal(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      raceId TEXT NOT NULL,
+      raceName TEXT NOT NULL,
+      note TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      rating INTEGER DEFAULT 0,
+      category TEXT DEFAULT 'Note',
+      UNIQUE(raceId)
+    );
+`);
 
     console.log('SQLite Database Initialized');
     return db;
@@ -133,7 +135,7 @@ export const toggleFavorite = async (type: 'driver' | 'team' | 'race', itemId: s
     const netState = await NetInfo.fetch();
     if (netState.isConnected && netState.isInternetReachable && auth.currentUser) {
       const uid = auth.currentUser.uid;
-      const docRef = doc(db, 'users', uid, 'favorites', `${type}_${itemId}`);
+      const docRef = doc(db, 'users', uid, 'favorites', `${type}_${itemId} `);
 
       if (isFavorite) {
         await setDoc(docRef, {
@@ -216,7 +218,7 @@ export const getFavorites = async (type?: string): Promise<FavoriteItem[]> => {
 
           // Sync to Local (Upsert)
           await dbSqlite.runAsync(
-            `INSERT OR REPLACE INTO favorites (type, itemId, data, addedAt) VALUES (?, ?, ?, ?)`,
+            `INSERT OR REPLACE INTO favorites(type, itemId, data, addedAt) VALUES(?, ?, ?, ?)`,
             [d.type, d.itemId, stringifiedData, d.addedAt]
           );
         }
@@ -353,9 +355,9 @@ export const saveUserProfile = async (profile: UserProfile) => {
     }
 
     // 1. Always Save to Local SQLite (User Specific)
-    await dbSqlite.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`user_${uid}_name`, profile.name]);
-    await dbSqlite.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`user_${uid}_bio`, profile.bio]);
-    await dbSqlite.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`user_${uid}_photo`, profile.photo]);
+    await dbSqlite.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`user_${uid} _name`, profile.name]);
+    await dbSqlite.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`user_${uid} _bio`, profile.bio]);
+    await dbSqlite.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [`user_${uid} _photo`, profile.photo]);
 
     // 2. Sync to Firebase if Online
     const netState = await NetInfo.fetch();
@@ -372,9 +374,6 @@ export const saveUserProfile = async (profile: UserProfile) => {
 };
 
 // --- STORAGE HELPERS ---
-import * as FileSystem from 'expo-file-system';
-import { getDownloadURL, ref, uploadString } from 'firebase/storage';
-import { storage } from './firebaseConfig';
 
 export const uploadProfileImage = async (userId: string, uri: string): Promise<string> => {
   try {
@@ -383,7 +382,7 @@ export const uploadProfileImage = async (userId: string, uri: string): Promise<s
       encoding: 'base64',
     });
 
-    const storageRef = ref(storage, `profile_photos/${userId}`);
+    const storageRef = ref(storage, `profile_photos / ${userId} `);
 
     // Upload Base64 string
     await uploadString(storageRef, base64, 'base64', {
@@ -407,7 +406,7 @@ export const getSetting = async (key: string, defaultValue: string = ''): Promis
     const result = await db.getFirstAsync('SELECT value FROM settings WHERE key = ?', [key]) as { value: string } | null;
     return result ? result.value : defaultValue;
   } catch (error) {
-    console.error(`Error getting setting ${key}:`, error);
+    console.error(`Error getting setting ${key}: `, error);
     return defaultValue;
   }
 };
@@ -421,7 +420,7 @@ export const saveSetting = async (key: string, value: string) => {
     const db = await SQLite.openDatabaseAsync(USER_DB_NAME);
     await db.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
   } catch (error) {
-    console.error(`Error saving setting ${key}:`, error);
+    console.error(`Error saving setting ${key}: `, error);
   }
 };
 
@@ -447,7 +446,7 @@ export const saveJournalNote = async (
   const updatedAt = new Date().toISOString();
 
   if (Platform.OS === 'web') {
-    const key = `f1hub_journal_${raceId}`;
+    const key = `f1hub_journal_${raceId} `;
     localStorage.setItem(key, JSON.stringify({ raceId, raceName, note, rating, category, updatedAt }));
 
     if (auth.currentUser) {
@@ -465,8 +464,8 @@ export const saveJournalNote = async (
     const dbSqlite = await SQLite.openDatabaseAsync(USER_DB_NAME);
     // Check if table needs update (simplified for now: just replace)
     await dbSqlite.runAsync(
-      `INSERT OR REPLACE INTO race_journal (raceId, raceName, note, updatedAt, rating, category) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO race_journal(raceId, raceName, note, updatedAt, rating, category)
+VALUES(?, ?, ?, ?, ?, ?)`,
       [raceId, raceName, note, updatedAt, rating || 0, category || 'Note']
     );
 
@@ -488,7 +487,7 @@ export const getJournalNotes = async (): Promise<JournalEntry[]> => {
       try {
         const q = query(collection(db, 'users', auth.currentUser.uid, 'journal'));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as JournalEntry);
+        return querySnapshot.docs.map((doc: any) => doc.data() as JournalEntry);
       } catch (e) {
         console.error('Error getting journal from Firebase', e);
       }
@@ -516,7 +515,7 @@ export const getJournalNotes = async (): Promise<JournalEntry[]> => {
 
 export const deleteJournalNote = async (raceId: string) => {
   if (Platform.OS === 'web') {
-    localStorage.removeItem(`f1hub_journal_${raceId}`);
+    localStorage.removeItem(`f1hub_journal_${raceId} `);
     if (auth.currentUser) {
       try {
         const docRef = doc(db, 'users', auth.currentUser.uid, 'journal', raceId);
@@ -545,7 +544,7 @@ export const deleteJournalNote = async (raceId: string) => {
 
 export const getJournalNoteForRace = async (raceId: string): Promise<JournalEntry | null> => {
   if (Platform.OS === 'web') {
-    const json = localStorage.getItem(`f1hub_journal_${raceId}`);
+    const json = localStorage.getItem(`f1hub_journal_${raceId} `);
     return json ? JSON.parse(json) : null;
   }
   try {

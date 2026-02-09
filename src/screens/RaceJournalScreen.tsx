@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -20,12 +20,69 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    useWindowDimensions
 } from 'react-native';
 
-const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CATEGORIES = ['Note', 'Prediction', 'Memory', 'Technical'] as const;
+
+const renderRating = (val: number, size = 16) => {
+    return (
+        <View style={styles.ratingStars}>
+            {[1, 2, 3, 4, 5].map(star => (
+                <Ionicons
+                    key={star}
+                    name={star <= val ? "star" : "star-outline"}
+                    size={size}
+                    color={star <= val ? "#FFD700" : "#555"}
+                    style={{ marginRight: 2 }}
+                />
+            ))}
+        </View>
+    );
+};
+
+const JournalItem = memo(({ item, themeColors, resolvedTheme, isDesktop, onEdit, onDelete }: any) => (
+    <View style={[
+        styles.noteCard,
+        { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#eee' },
+        isDesktop && { flex: 1, marginBottom: 20 }
+    ]}>
+        <View style={styles.cardIndicator} />
+        <View style={{ flex: 1 }}>
+            <View style={styles.noteHeader}>
+                <View style={{ flex: 1 }}>
+                    <Text style={[styles.raceName, { color: themeColors.text }]}>{item.raceName}</Text>
+                    <View style={styles.metaRow}>
+                        <View style={[styles.categoryBadge, { backgroundColor: themeColors.tint + '20' }]}>
+                            <Text style={[styles.categoryText, { color: themeColors.tint }]}>{item.category || 'Note'}</Text>
+                        </View>
+                        {renderRating(item.rating || 0)}
+                    </View>
+                </View>
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity onPress={() => onEdit(item)} style={styles.actionButton}>
+                        <Ionicons name="pencil" size={18} color={themeColors.tint} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => onDelete(item.raceId)} style={styles.actionButton}>
+                        <Ionicons name="trash-outline" size={18} color="#ff4444" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+            <Text style={[styles.noteContent, { color: themeColors.text, opacity: 0.8 }]} numberOfLines={3}>
+                {item.note}
+            </Text>
+            <View style={styles.cardFooter}>
+                <Ionicons name="time-outline" size={12} color={themeColors.text} style={{ opacity: 0.5, marginRight: 4 }} />
+                <Text style={[styles.updatedAt, { color: themeColors.text, opacity: 0.5 }]}>
+                    {format(new Date(item.updatedAt), 'MMM d, yyyy • HH:mm')}
+                </Text>
+            </View>
+        </View>
+    </View>
+));
 type Category = typeof CATEGORIES[number];
 
 export default function RaceJournalScreen() {
@@ -102,13 +159,13 @@ export default function RaceJournalScreen() {
         setIsModalVisible(true);
     };
 
-    const handleEdit = (note: JournalEntry) => {
+    const handleEdit = useCallback((note: JournalEntry) => {
         setEditingNote(note);
         setNoteText(note.note);
         setRating(note.rating || 0);
         setCategory((note.category as Category) || 'Note');
         setIsModalVisible(true);
-    };
+    }, []);
 
     const handleSave = async () => {
         if (!editingNote) return;
@@ -137,7 +194,7 @@ export default function RaceJournalScreen() {
         }
     };
 
-    const handleDelete = (raceId: string) => {
+    const handleDelete = useCallback((raceId: string) => {
         if (Platform.OS === 'web') {
             // Web compliant confirmation
             if (window.confirm(t('delete_note_message'))) {
@@ -158,58 +215,20 @@ export default function RaceJournalScreen() {
                 }
             ]
         );
-    };
+    }, [t]);
 
-    const renderRating = (val: number, size = 16) => {
-        return (
-            <View style={styles.ratingStars}>
-                {[1, 2, 3, 4, 5].map(star => (
-                    <Ionicons
-                        key={star}
-                        name={star <= val ? "star" : "star-outline"}
-                        size={size}
-                        color={star <= val ? "#FFD700" : "#555"}
-                        style={{ marginRight: 2 }}
-                    />
-                ))}
-            </View>
-        );
-    };
+    const { width } = useWindowDimensions();
+    const isDesktop = width > 768; // Desktop breakpoint
 
     const renderItem = ({ item }: { item: JournalEntry }) => (
-        <View style={[styles.noteCard, { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#eee' }]}>
-            <View style={styles.cardIndicator} />
-            <View style={{ flex: 1 }}>
-                <View style={styles.noteHeader}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.raceName, { color: themeColors.text }]}>{item.raceName}</Text>
-                        <View style={styles.metaRow}>
-                            <View style={[styles.categoryBadge, { backgroundColor: themeColors.tint + '20' }]}>
-                                <Text style={[styles.categoryText, { color: themeColors.tint }]}>{item.category || 'Note'}</Text>
-                            </View>
-                            {renderRating(item.rating || 0)}
-                        </View>
-                    </View>
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionButton}>
-                            <Ionicons name="pencil" size={18} color={themeColors.tint} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDelete(item.raceId)} style={styles.actionButton}>
-                            <Ionicons name="trash-outline" size={18} color="#ff4444" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                <Text style={[styles.noteContent, { color: themeColors.text, opacity: 0.8 }]} numberOfLines={3}>
-                    {item.note}
-                </Text>
-                <View style={styles.cardFooter}>
-                    <Ionicons name="time-outline" size={12} color={themeColors.text} style={{ opacity: 0.5, marginRight: 4 }} />
-                    <Text style={[styles.updatedAt, { color: themeColors.text, opacity: 0.5 }]}>
-                        {format(new Date(item.updatedAt), 'MMM d, yyyy • HH:mm')}
-                    </Text>
-                </View>
-            </View>
-        </View>
+        <JournalItem
+            item={item}
+            themeColors={themeColors}
+            resolvedTheme={resolvedTheme}
+            isDesktop={isDesktop}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+        />
     );
 
     return (
@@ -229,7 +248,7 @@ export default function RaceJournalScreen() {
                         <Ionicons name="refresh" size={20} color="#FFF" />
                     </TouchableOpacity>
                 </View>
-                <View style={styles.headerStats}>
+                <View style={[styles.headerStats, { maxWidth: 1200, alignSelf: 'center', width: '100%' }]}>
                     <View style={styles.statItem}>
                         <Text style={styles.statValue}>{notes.length}</Text>
                         <Text style={styles.statLabel}>Entries</Text>
@@ -266,11 +285,14 @@ export default function RaceJournalScreen() {
                 </View>
             ) : (
                 <FlatList
+                    key={isDesktop ? 'desktop-grid' : 'mobile-list'}
                     data={notes}
                     renderItem={renderItem}
-                    keyExtractor={item => item.raceId}
-                    contentContainerStyle={styles.listContent}
+                    keyExtractor={(item: JournalEntry) => item.raceId}
+                    contentContainerStyle={[styles.listContent, { maxWidth: 1200, width: '100%', alignSelf: 'center' }]}
                     showsVerticalScrollIndicator={false}
+                    numColumns={isDesktop ? 3 : 1}
+                    columnWrapperStyle={isDesktop ? { gap: 20 } : undefined}
                 />
             )}
 
@@ -299,8 +321,8 @@ export default function RaceJournalScreen() {
                         ) : (
                             <FlatList
                                 data={allRaces}
-                                keyExtractor={item => item.id.toString()}
-                                renderItem={({ item }) => (
+                                keyExtractor={(item: any) => item.id.toString()}
+                                renderItem={({ item }: { item: any }) => (
                                     <TouchableOpacity
                                         style={[styles.racePickerItem, { borderBottomColor: resolvedTheme === 'dark' ? '#333' : '#eee' }]}
                                         onPress={() => {

@@ -19,7 +19,7 @@ export function HapticTab(props: BottomTabBarButtonProps) {
       onHoverOut={() => {
         scale.value = withSpring(1, { damping: 10, stiffness: 100 });
       }}
-      onPressIn={(ev) => {
+      onPressIn={(ev: any) => {
         if (process.env.EXPO_OS === 'ios') {
           // Add a soft haptic feedback when pressing down on the tabs.
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -27,7 +27,7 @@ export function HapticTab(props: BottomTabBarButtonProps) {
         scale.value = withSpring(0.9, { damping: 10, stiffness: 100 });
         props.onPressIn?.(ev);
       }}
-      onPressOut={(ev) => {
+      onPressOut={(ev: any) => {
         scale.value = withSpring(1);
         props.onPressOut?.(ev);
       }}

@@ -1,7 +1,7 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import React from 'react';
-import { Alert, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // 2025 Season Video Data (Mapped from User provided REVERSE list: Newest=Abu Dhabi to Oldest=Australia)
@@ -39,18 +39,20 @@ import { useSettings } from '@/context/SettingsContext';
 
 const playVideo = (youtubeId: string) => {
     const url = `https://www.youtube.com/watch?v=${youtubeId}`;
-    Linking.canOpenURL(url).then((supported) => {
+    Linking.canOpenURL(url).then((supported: boolean) => {
         if (supported) {
             Linking.openURL(url);
         } else {
             Alert.alert("Error", "Cannot open YouTube link");
         }
-    }).catch(err => console.error("An error occurred", err));
+    }).catch((err: any) => console.error("An error occurred", err));
 };
 
 export default function WatchScreen() {
     const { resolvedTheme, t } = useSettings();
     const themeColors = Colors[resolvedTheme];
+    const { width } = useWindowDimensions();
+    const isDesktop = width > 768;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -61,11 +63,9 @@ export default function WatchScreen() {
                     <Text style={[styles.headerSubtitle, { color: themeColors.icon }]}>{t('watchSubtitle')}</Text>
                 </View>
 
-
-
                 {/* Hero Video Card */}
                 <TouchableOpacity
-                    style={[styles.heroCard, { backgroundColor: themeColors.card }]}
+                    style={[styles.heroCard, { backgroundColor: themeColors.card, maxHeight: isDesktop ? 400 : 220 }]}
                     activeOpacity={0.9}
                     onPress={() => playVideo(HERO_VIDEO.youtubeId)}
                 >
@@ -88,28 +88,34 @@ export default function WatchScreen() {
 
                 <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('recentVideos')}</Text>
 
-                {/* Recent List */}
-                {RECENT_VIDEOS.map((video) => (
-                    <TouchableOpacity
-                        key={video.id}
-                        style={styles.videoRow}
-                        onPress={() => playVideo(video.youtubeId)}
-                    >
-                        <View style={styles.videoThumbSmall}>
-                            <Image
-                                source={{ uri: `https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg` }}
-                                style={StyleSheet.absoluteFillObject}
-                                resizeMode="cover"
-                            />
-                            <Text style={styles.durationBadge}>{video.duration}</Text>
-                        </View>
-                        <View style={styles.videoInfo}>
-                            <Text style={[styles.videoTitle, { color: themeColors.text }]}>{video.title}</Text>
-                            <Text style={[styles.videoMeta, { color: themeColors.icon }]}>{video.time}</Text>
-                        </View>
-                        <IconSymbol name="chevron.right" size={20} color={themeColors.icon} />
-                    </TouchableOpacity>
-                ))}
+                {/* Recent List - Grid on Desktop */}
+                <View style={[isDesktop && styles.desktopGrid]}>
+                    {RECENT_VIDEOS.map((video) => (
+                        <TouchableOpacity
+                            key={video.id}
+                            style={[
+                                styles.videoRow,
+                                isDesktop && styles.desktopVideoCard,
+                                { backgroundColor: isDesktop ? themeColors.card : 'transparent' }
+                            ]}
+                            onPress={() => playVideo(video.youtubeId)}
+                        >
+                            <View style={[styles.videoThumbSmall, isDesktop && styles.desktopVideoThumb]}>
+                                <Image
+                                    source={{ uri: `https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg` }}
+                                    style={StyleSheet.absoluteFillObject}
+                                    resizeMode="cover"
+                                />
+                                <Text style={styles.durationBadge}>{video.duration}</Text>
+                            </View>
+                            <View style={styles.videoInfo}>
+                                <Text style={[styles.videoTitle, { color: themeColors.text }]} numberOfLines={2}>{video.title}</Text>
+                                <Text style={[styles.videoMeta, { color: themeColors.icon }]}>{video.time}</Text>
+                            </View>
+                            {!isDesktop && <IconSymbol name="chevron.right" size={20} color={themeColors.icon} />}
+                        </TouchableOpacity>
+                    ))}
+                </View>
 
             </ScrollView>
         </SafeAreaView>
@@ -123,6 +129,9 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 40,
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     header: {
         padding: 20,
@@ -272,6 +281,28 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: '#000',
+    },
+    desktopGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: 20,
+        gap: 16,
+    },
+    desktopVideoCard: {
+        width: '31%', // 3 columns with gap
+        flexDirection: 'column', // Stack thumb and info
+        alignItems: 'flex-start',
+        borderWidth: 1,
+        borderColor: '#333',
+        borderRadius: 12,
+        padding: 0, // Remove row padding
+        marginBottom: 0, // Handled by gap
+        overflow: 'hidden',
+    },
+    desktopVideoThumb: {
+        width: '100%',
+        height: 160,
+        borderRadius: 0, // Flush with card
     },
     playingTitle: {
         marginTop: 16,

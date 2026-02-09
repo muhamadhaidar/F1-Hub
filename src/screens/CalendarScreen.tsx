@@ -4,8 +4,8 @@ import { Colors } from '@/constants/theme';
 import { f1Api, getRaceImage } from '@/services/api';
 import { F1Race } from '@/types/f1';
 import { format } from 'date-fns';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, ImageBackground, Modal, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, ImageBackground, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,263 +15,7 @@ import { useSettings } from '@/context/SettingsContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useNavigation } from '@react-navigation/native';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-export default function CalendarScreen() {
-  const { isFavorite, toggle } = useFavorites();
-  const { resolvedTheme, t } = useSettings();
-  const themeColors = Colors[resolvedTheme];
-  const navigation = useNavigation();
-  const [races, setRaces] = useState<F1Race[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState('2026');
-
-  // Results Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedRace, setSelectedRace] = useState<F1Race | null>(null);
-  const [raceResults, setRaceResults] = useState<any[]>([]);
-  const [resultsLoading, setResultsLoading] = useState(false);
-
-  // Animation Values
-  const translateY = useSharedValue(SCREEN_HEIGHT);
-  const opacity = useSharedValue(0);
-
-  useEffect(() => {
-    loadSchedule();
-  }, [selectedYear]);
-
-  useEffect(() => {
-    if (modalVisible) {
-      translateY.value = withTiming(0, { duration: 300 });
-      opacity.value = withTiming(1);
-    } else {
-      translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
-      opacity.value = withTiming(0);
-    }
-  }, [modalVisible]);
-
-  const loadSchedule = async () => {
-    setLoading(true);
-    const data = await f1Api.getSeasonSchedule(selectedYear);
-    setRaces(data);
-    setLoading(false);
-  };
-
-  const handleRacePress = async (race: F1Race) => {
-    if (new Date(race.date) > new Date()) {
-      if (selectedYear === '2026') return;
-    }
-
-    setSelectedRace(race);
-    setModalVisible(true);
-    setResultsLoading(true);
-
-    const results = await f1Api.getRaceResults(selectedYear, race.round.toString());
-    setRaceResults(results);
-    setResultsLoading(false);
-  };
-
-  const closeModal = () => {
-    translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 }, () => {
-      runOnJS(setModalVisible)(false);
-    });
-  };
-
-  // Gesture Handler
-  const pan = Gesture.Pan()
-    .onChange((event) => {
-      if (event.translationY > 0) {
-        translateY.value = event.translationY;
-      }
-    })
-    .onFinalize((event) => {
-      if (event.translationY > 100) {
-        runOnJS(closeModal)();
-      } else {
-        translateY.value = withTiming(0, { duration: 200 });
-      }
-    });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  const nextRaceIndex = selectedYear === '2026' ? races.findIndex(r => new Date(r.date) > new Date()) : -1;
-
-  const renderItem = ({ item, index }: { item: F1Race; index: number }) => {
-    const isNext = index === nextRaceIndex;
-    const isPast = new Date(item.date) < new Date();
-    const raceImage = getRaceImage(item.circuit.country);
-
-    return (
-      <HoverScale
-        style={[
-          styles.raceCardContainer,
-          isNext && styles.nextRaceBorder
-        ]}
-        onPress={() => handleRacePress(item)}
-      >
-        <ImageBackground
-          source={{ uri: raceImage }}
-          style={styles.cardInfo}
-          imageStyle={{ borderRadius: 12 }}
-          resizeMode="cover"
-        >
-          <View style={[styles.cardOverlay, isPast && { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
-            <View style={styles.roundInfo}>
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                <Text style={[styles.roundText, isNext && styles.nextRoundText]}>R{item.round}</Text>
-                {isNext && <View style={styles.nextBadge}><Text style={styles.nextBadgeText}>{t('next')}</Text></View>}
-              </View>
-
-              <View style={{ alignItems: 'center', gap: 12 }}>
-                <HoverScale onPress={() => toggle('race', item.id.toString(), item)}>
-                  <IconSymbol
-                    name={isFavorite('race', item.id.toString()) ? "star.fill" : "star"}
-                    size={20}
-                    color={isFavorite('race', item.id.toString()) ? "#FFD700" : "#FFF"}
-                  />
-                </HoverScale>
-                <HoverScale
-                  onPress={() => (navigation as any).navigate('RaceJournal', { raceId: item.id.toString(), raceName: item.name })}
-                >
-                  <IconSymbol
-                    name="square.and.pencil"
-                    size={20}
-                    color="#FFF"
-                  />
-                </HoverScale>
-              </View>
-            </View>
-
-            <View style={styles.raceInfo}>
-              <View>
-                <Text style={styles.raceName}>{item.name}</Text>
-                <Text style={styles.circuitName}>{item.circuit.name}</Text>
-              </View>
-            </View>
-
-            <View style={styles.dateContainer}>
-              <IconSymbol name="calendar" size={14} color="#CCC" />
-              <Text style={styles.dateText}>{format(new Date(item.date), 'MMM dd, yyyy')}</Text>
-              {isPast && <Text style={styles.viewResultsText}> • Result {'>'}</Text>}
-            </View>
-          </View>
-        </ImageBackground>
-      </HoverScale>
-    );
-  };
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <View style={[styles.header, { borderBottomColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border }]}>
-        <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('calendarTitle')}</Text>
-        <View style={[styles.yearToggle, { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }]}>
-          <HoverScale
-            style={[styles.yearButton, selectedYear === '2025' && styles.yearActive]}
-            onPress={() => setSelectedYear('2025')}
-          >
-            <Text style={[
-              styles.yearText,
-              selectedYear === '2025' && styles.yearTextActive,
-              selectedYear !== '2025' && { color: themeColors.text }
-            ]}>2025</Text>
-          </HoverScale>
-          <HoverScale
-            style={[styles.yearButton, selectedYear === '2026' && styles.yearActive]}
-            onPress={() => setSelectedYear('2026')}
-          >
-            <Text style={[
-              styles.yearText,
-              selectedYear === '2026' && styles.yearTextActive,
-              selectedYear !== '2026' && { color: themeColors.text }
-            ]}>2026</Text>
-          </HoverScale>
-        </View>
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={Colors.dark.primary} style={{ marginTop: 50 }} />
-      ) : (
-        <FlatList
-          data={races}
-          renderItem={renderItem}
-          keyExtractor={item => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={<Text style={{ color: themeColors.text, textAlign: 'center', marginTop: 20 }}>{t('noRacesFound')}</Text>}
-        />
-      )}
-
-      {/* DRAGGABLE RESULTS MODAL */}
-      <Modal
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={closeModal}
-      >
-        <GestureHandlerRootView style={styles.modalOverlay}>
-          <Animated.View style={[styles.backdrop, backdropStyle]} onTouchEnd={closeModal} />
-
-          <GestureDetector gesture={pan}>
-            <Animated.View style={[styles.modalContent, animatedStyle, { backgroundColor: themeColors.card }]}>
-              <View style={styles.dragHandleBar}>
-                <View style={[styles.dragHandle, { backgroundColor: resolvedTheme === 'dark' ? '#444' : '#ccc' }]} />
-              </View>
-
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: themeColors.text }]}>{t('raceResults')}</Text>
-                <HoverScale onPress={closeModal} style={styles.closeButton}>
-                  <IconSymbol name="xmark.circle.fill" size={24} color={themeColors.icon} />
-                </HoverScale>
-              </View>
-
-              {selectedRace && (
-                <View style={[styles.modalSubHeader, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
-                  <Text style={[styles.modalRaceName, { color: themeColors.text }]}>{selectedRace.name}</Text>
-                  <Text style={[styles.modalDate, { color: themeColors.icon }]}>{format(new Date(selectedRace.date), 'MMM dd, yyyy')}</Text>
-                </View>
-              )}
-
-              {resultsLoading ? (
-                <ActivityIndicator size="large" color={Colors.dark.primary} style={{ marginVertical: 40 }} />
-              ) : raceResults.length > 0 ? (
-                <Animated.ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 40 }}
-                  // Prevent ScrollView from stealing drag gesture when at top
-                  bounces={false}
-                >
-                  {raceResults.map((result) => (
-                    <View key={result.pos} style={[styles.resultRow, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
-                      <View style={[styles.posBadge, result.pos === 1 ? styles.pos1 : result.pos === 2 ? styles.pos2 : result.pos === 3 ? styles.pos3 : { backgroundColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }]}>
-                        <Text style={[styles.posText, result.pos <= 3 ? { color: 'black' } : { color: themeColors.text }]}>{result.pos}</Text>
-                      </View>
-                      <View style={styles.driverInfo}>
-                        <Text style={[styles.driverName, { color: themeColors.text }]}>{result.driver}</Text>
-                        <Text style={[styles.teamName, { color: themeColors.icon }]}>{result.team}</Text>
-                      </View>
-                      <Text style={[styles.timeText, { color: themeColors.icon }]}>{result.time}</Text>
-                      <Text style={styles.ptsText}>{result.pts}</Text>
-                    </View>
-                  ))}
-                </Animated.ScrollView>
-              ) : (
-                <View style={styles.emptyState}>
-                  <Text style={[styles.emptyText, { color: themeColors.text }]}>{t('noResults')}</Text>
-                  {selectedYear === '2026' && <Text style={[styles.emptySubText, { color: themeColors.icon }]}>{t('raceNotHeld')}</Text>}
-                </View>
-              )}
-            </Animated.View>
-          </GestureDetector>
-        </GestureHandlerRootView>
-      </Modal>
-    </SafeAreaView>
-  );
-}
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -286,6 +30,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 24,
@@ -319,6 +66,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
   },
   raceCardContainer: {
     borderRadius: 12,
@@ -339,11 +89,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 16,
     justifyContent: 'space-between',
-  },
-  pastRaceCard: {
-    // Kept if needed, or remove if unused. 
-    // Logic was: View style={[styles.cardOverlay, isPast && { backgroundColor: 'rgba(0,0,0,0.8)' }]}
-    // So this might not be needed in styles object if handled inline, but let's leave valid structure.
   },
   roundInfo: {
     flexDirection: 'row',
@@ -533,3 +278,281 @@ const styles = StyleSheet.create({
     marginTop: 8,
   }
 });
+
+const RaceItem = memo(({ item, index, nextRaceIndex, isDesktop, t, isFavorite, toggle, onRacePress, navigation, resolvedTheme }: any) => {
+  const isNext = index === nextRaceIndex;
+  const isPast = new Date(item.date) < new Date();
+  const raceImage = getRaceImage(item.circuit.country);
+
+  return (
+    <HoverScale
+      style={[
+        styles.raceCardContainer,
+        isNext && styles.nextRaceBorder,
+        isDesktop && { flex: 1, maxWidth: '32%' } // Grid item width
+      ]}
+      onPress={() => onRacePress(item)}
+    >
+      <ImageBackground
+        source={{ uri: raceImage }}
+        style={styles.cardInfo}
+        imageStyle={{ borderRadius: 12 }}
+        resizeMode="cover"
+      >
+        <View style={[styles.cardOverlay, isPast && { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+          <View style={styles.roundInfo}>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <Text style={[styles.roundText, isNext && styles.nextRoundText]}>R{item.round}</Text>
+              {isNext && <View style={styles.nextBadge}><Text style={styles.nextBadgeText}>{t('next')}</Text></View>}
+            </View>
+
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <HoverScale onPress={() => toggle('race', item.id.toString(), item)}>
+                <IconSymbol
+                  name={isFavorite('race', item.id.toString()) ? "star.fill" : "star"}
+                  size={20}
+                  color={isFavorite('race', item.id.toString()) ? "#FFD700" : "#FFF"}
+                />
+              </HoverScale>
+              <HoverScale
+                onPress={() => (navigation as any).navigate('RaceJournal', { raceId: item.id.toString(), raceName: item.name })}
+              >
+                <IconSymbol
+                  name="square.and.pencil"
+                  size={20}
+                  color="#FFF"
+                />
+              </HoverScale>
+            </View>
+          </View>
+
+          <View style={styles.raceInfo}>
+            <View>
+              <Text style={styles.raceName}>{item.name}</Text>
+              <Text style={styles.circuitName}>{item.circuit.name}</Text>
+            </View>
+          </View>
+
+          <View style={styles.dateContainer}>
+            <IconSymbol name="calendar" size={14} color="#CCC" />
+            <Text style={styles.dateText}>{format(new Date(item.date), 'MMM dd, yyyy')}</Text>
+            {isPast && <Text style={styles.viewResultsText}> • Result {'>'}</Text>}
+          </View>
+        </View>
+      </ImageBackground>
+    </HoverScale>
+  );
+});
+
+export default function CalendarScreen() {
+  const { width } = useWindowDimensions();
+  const isDesktop = width > 768;
+
+  const { isFavorite, toggle } = useFavorites();
+  const { resolvedTheme, t } = useSettings();
+  const themeColors = Colors[resolvedTheme];
+  const navigation = useNavigation();
+  const [races, setRaces] = useState<F1Race[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState('2026');
+
+  // Results Modal State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedRace, setSelectedRace] = useState<F1Race | null>(null);
+  const [raceResults, setRaceResults] = useState<any[]>([]);
+  const [resultsLoading, setResultsLoading] = useState(false);
+
+  // Animation Values
+  const translateY = useSharedValue(SCREEN_HEIGHT);
+  const opacity = useSharedValue(0);
+
+  const loadSchedule = useCallback(async () => {
+    setLoading(true);
+    const data = await f1Api.getSeasonSchedule(selectedYear);
+    setRaces(data);
+    setLoading(false);
+  }, [selectedYear]);
+
+  useEffect(() => {
+    loadSchedule();
+  }, [loadSchedule]);
+
+  useEffect(() => {
+    if (modalVisible) {
+      translateY.value = withTiming(0, { duration: 300 });
+      opacity.value = withTiming(1);
+    } else {
+      translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
+      opacity.value = withTiming(0);
+    }
+  }, [modalVisible]);
+
+  const closeModal = useCallback(() => {
+    translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 }, () => {
+      runOnJS(setModalVisible)(false);
+    });
+  }, []);
+
+  const handleRacePress = useCallback(async (race: F1Race) => {
+    if (new Date(race.date) > new Date()) {
+      if (selectedYear === '2026') return;
+    }
+
+    setSelectedRace(race);
+    setModalVisible(true);
+    setResultsLoading(true);
+
+    const results = await f1Api.getRaceResults(selectedYear, race.round.toString());
+    setRaceResults(results);
+    setResultsLoading(false);
+  }, [selectedYear]);
+
+  // Gesture Handler
+  const pan = Gesture.Pan()
+    .onChange((event: any) => {
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onFinalize((event: any) => {
+      if (event.translationY > 100) {
+        runOnJS(closeModal)();
+      } else {
+        translateY.value = withTiming(0, { duration: 200 });
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  const nextRaceIndex = selectedYear === '2026' ? races.findIndex(r => new Date(r.date) > new Date()) : -1;
+
+  const renderItem = ({ item, index }: { item: F1Race; index: number }) => (
+    <RaceItem
+      item={item}
+      index={index}
+      nextRaceIndex={nextRaceIndex}
+      isDesktop={isDesktop}
+      t={t}
+      isFavorite={isFavorite}
+      toggle={toggle}
+      onRacePress={handleRacePress}
+      navigation={navigation}
+      resolvedTheme={resolvedTheme}
+    />
+  );
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.header, { borderBottomColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border }]}>
+        <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('calendarTitle')}</Text>
+        <View style={[styles.yearToggle, { backgroundColor: themeColors.card, borderColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }]}>
+          <HoverScale
+            style={[styles.yearButton, selectedYear === '2025' && styles.yearActive]}
+            onPress={() => setSelectedYear('2025')}
+          >
+            <Text style={[
+              styles.yearText,
+              selectedYear === '2025' && styles.yearTextActive,
+              selectedYear !== '2025' && { color: themeColors.text }
+            ]}>2025</Text>
+          </HoverScale>
+          <HoverScale
+            style={[styles.yearButton, selectedYear === '2026' && styles.yearActive]}
+            onPress={() => setSelectedYear('2026')}
+          >
+            <Text style={[
+              styles.yearText,
+              selectedYear === '2026' && styles.yearTextActive,
+              selectedYear !== '2026' && { color: themeColors.text }
+            ]}>2026</Text>
+          </HoverScale>
+        </View>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator size="large" color={Colors.dark.primary} style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList
+          key={isDesktop ? 'desktop' : 'mobile'} // Force re-render when switching layouts
+          data={races}
+          renderItem={({ item, index }: { item: F1Race; index: number }) => renderItem({ item, index })}
+          keyExtractor={(item: any) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          numColumns={isDesktop ? 3 : 1}
+          columnWrapperStyle={isDesktop ? { gap: 16 } : undefined}
+          ListEmptyComponent={<Text style={{ color: themeColors.text, textAlign: 'center', marginTop: 20 }}>{t('noRacesFound')}</Text>}
+        />
+      )}
+
+      {/* DRAGGABLE RESULTS MODAL */}
+      <Modal
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <GestureHandlerRootView style={styles.modalOverlay}>
+          <Animated.View style={[styles.backdrop, backdropStyle]} onTouchEnd={closeModal} />
+
+          <GestureDetector gesture={pan}>
+            <Animated.View style={[styles.modalContent, animatedStyle, { backgroundColor: themeColors.card }]}>
+              <View style={styles.dragHandleBar}>
+                <View style={[styles.dragHandle, { backgroundColor: resolvedTheme === 'dark' ? '#444' : '#ccc' }]} />
+              </View>
+
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: themeColors.text }]}>{t('raceResults')}</Text>
+                <HoverScale onPress={closeModal} style={styles.closeButton}>
+                  <IconSymbol name="xmark.circle.fill" size={24} color={themeColors.icon} />
+                </HoverScale>
+              </View>
+
+              {selectedRace && (
+                <View style={[styles.modalSubHeader, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
+                  <Text style={[styles.modalRaceName, { color: themeColors.text }]}>{selectedRace.name}</Text>
+                  <Text style={[styles.modalDate, { color: themeColors.icon }]}>{format(new Date(selectedRace.date), 'MMM dd, yyyy')}</Text>
+                </View>
+              )}
+
+              {resultsLoading ? (
+                <ActivityIndicator size="large" color={Colors.dark.primary} style={{ marginVertical: 40 }} />
+              ) : raceResults.length > 0 ? (
+                <Animated.ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 40 }}
+                  // Prevent ScrollView from stealing drag gesture when at top
+                  bounces={false}
+                >
+                  {raceResults.map((result) => (
+                    <View key={result.pos} style={[styles.resultRow, { borderBottomColor: resolvedTheme === 'dark' ? '#222' : '#eee' }]}>
+                      <View style={[styles.posBadge, result.pos === 1 ? styles.pos1 : result.pos === 2 ? styles.pos2 : result.pos === 3 ? styles.pos3 : { backgroundColor: resolvedTheme === 'dark' ? '#333' : '#ddd' }]}>
+                        <Text style={[styles.posText, result.pos <= 3 ? { color: 'black' } : { color: themeColors.text }]}>{result.pos}</Text>
+                      </View>
+                      <View style={styles.driverInfo}>
+                        <Text style={[styles.driverName, { color: themeColors.text }]}>{result.driver}</Text>
+                        <Text style={[styles.teamName, { color: themeColors.icon }]}>{result.team}</Text>
+                      </View>
+                      <Text style={[styles.timeText, { color: themeColors.icon }]}>{result.time}</Text>
+                      <Text style={styles.ptsText}>{result.pts}</Text>
+                    </View>
+                  ))}
+                </Animated.ScrollView>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={[styles.emptyText, { color: themeColors.text }]}>{t('noResults')}</Text>
+                  {selectedYear === '2026' && <Text style={[styles.emptySubText, { color: themeColors.icon }]}>{t('raceNotHeld')}</Text>}
+                </View>
+              )}
+            </Animated.View>
+          </GestureDetector>
+        </GestureHandlerRootView>
+      </Modal>
+    </SafeAreaView>
+  );
+}

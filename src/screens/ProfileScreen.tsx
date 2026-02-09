@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, ImageBackground, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, ImageBackground, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -23,8 +23,10 @@ import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 
 export default function ProfileScreen() {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
     const { signOut } = useAuth(); // Get signOut from context
+    const { width } = useWindowDimensions();
+    const isDesktop = width > 768;
     const { favorites, refresh } = useFavorites();
     const { resolvedTheme, t } = useSettings();
     const themeColors = Colors[resolvedTheme];
@@ -115,9 +117,7 @@ export default function ProfileScreen() {
         }, [refresh])
     );
 
-    const drivers = favorites.filter(f => f.type === 'driver').map(f => f.data);
-    const teams = favorites.filter(f => f.type === 'team').map(f => f.data);
-    const races = favorites.filter(f => f.type === 'race').map(f => f.data);
+
 
     const renderTabs = () => (
         <View style={styles.tabContainer}>
@@ -142,76 +142,106 @@ export default function ProfileScreen() {
     );
 
     const renderContent = () => {
+        const gridContainerStyle = isDesktop ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16 } : {};
+        const cardStyle = isDesktop ? { width: '32%', marginBottom: 0 } : {};
+
         if (activeTab === 'DRIVER') {
-            if (drivers.length === 0) return <Text style={styles.emptyText}>No favorite drivers.</Text>;
-            return drivers.map((driver: any) => (
-                <HoverScale key={driver.driverId} style={styles.driverLargeCard}>
-                    <ImageBackground
-                        source={typeof getDriverImageUrl(driver.driverId) === 'string' ? { uri: getDriverImageUrl(driver.driverId) } : getDriverImageUrl(driver.driverId)}
-                        style={styles.driverCardBackground}
-                        imageStyle={{ borderRadius: 12, opacity: 0.8 }}
-                        resizeMode="cover"
-                    >
-                        <View style={{ position: 'absolute', top: 12, left: 12 }}>
-                            <IconSymbol name="star.fill" size={20} color="#FFD700" />
-                        </View>
-                        <View style={styles.driverNameContainer}>
-                            <Text style={styles.driverNameTitle}>{driver.driver.toUpperCase()}</Text>
-                            <Text style={styles.driverTeamSubtitle}>{driver.team}</Text>
-                        </View>
-                    </ImageBackground>
-                </HoverScale>
-            ));
+            const driverItems = favorites.filter(f => f.type === 'driver');
+            if (driverItems.length === 0) return <Text style={styles.emptyText}>No favorite drivers.</Text>;
+
+            return (
+                <View style={gridContainerStyle as any}>
+                    {driverItems.map((item) => {
+                        const driver = item.data || {};
+                        return (
+                            <HoverScale key={item.id.toString() + '_' + item.itemId} style={[styles.driverLargeCard, cardStyle]}>
+                                <ImageBackground
+                                    source={typeof getDriverImageUrl(driver.driverId) === 'string' ? { uri: getDriverImageUrl(driver.driverId) } : getDriverImageUrl(driver.driverId)}
+                                    style={styles.driverCardBackground}
+                                    imageStyle={{ borderRadius: 12, opacity: 0.8 }}
+                                    resizeMode="cover"
+                                >
+                                    <View style={{ position: 'absolute', top: 12, left: 12 }}>
+                                        <IconSymbol name="star.fill" size={20} color="#FFD700" />
+                                    </View>
+                                    <View style={styles.driverNameContainer}>
+                                        <Text style={styles.driverNameTitle}>{driver.driver ? driver.driver.toUpperCase() : 'UNKNOWN'}</Text>
+                                        <Text style={styles.driverTeamSubtitle}>{driver.team || 'Unknown Team'}</Text>
+                                    </View>
+                                </ImageBackground>
+                            </HoverScale>
+                        );
+                    })}
+                </View>
+            );
         }
 
         if (activeTab === 'TEAM') {
-            if (teams.length === 0) return <Text style={styles.emptyText}>No favorite teams.</Text>;
-            return teams.map((team: any) => (
-                <HoverScale key={team.teamId} style={styles.teamLargeCard}>
-                    <ImageBackground
-                        source={typeof getTeamLogoUrl(team.teamId) === 'string' ? { uri: getTeamLogoUrl(team.teamId) } : getTeamLogoUrl(team.teamId)}
-                        style={styles.teamCardBackground}
-                        imageStyle={{ borderRadius: 16, opacity: 0.9 }} // Visual tweak for readability
-                        resizeMode="cover"
-                    >
-                        <View style={styles.cardOverlay}>
-                            <View style={{ position: 'absolute', top: 12, right: 12 }}>
-                                <IconSymbol name="star.fill" size={20} color="#FFD700" />
-                            </View>
+            const teamItems = favorites.filter(f => f.type === 'team');
+            if (teamItems.length === 0) return <Text style={styles.emptyText}>No favorite teams.</Text>;
 
-                            <View style={styles.teamContentContainer}>
-                                <Text style={styles.teamNameText}>{(typeof team.name === 'string' ? team.name : team.team).toUpperCase()}</Text>
-                            </View>
-                        </View>
-                    </ImageBackground>
-                </HoverScale>
-            ));
+            return (
+                <View style={gridContainerStyle as any}>
+                    {teamItems.map((item) => {
+                        const team = item.data || {};
+                        return (
+                            <HoverScale key={item.id.toString() + '_' + item.itemId} style={[styles.teamLargeCard, cardStyle]}>
+                                <ImageBackground
+                                    source={typeof getTeamLogoUrl(team.teamId) === 'string' ? { uri: getTeamLogoUrl(team.teamId) } : getTeamLogoUrl(team.teamId)}
+                                    style={styles.teamCardBackground}
+                                    imageStyle={{ borderRadius: 16, opacity: 0.9 }}
+                                    resizeMode="cover"
+                                >
+                                    <View style={styles.cardOverlay}>
+                                        <View style={{ position: 'absolute', top: 12, right: 12 }}>
+                                            <IconSymbol name="star.fill" size={20} color="#FFD700" />
+                                        </View>
+
+                                        <View style={styles.teamContentContainer}>
+                                            <Text style={styles.teamNameText}>{(team.name || team.team || 'Unknown').toUpperCase()}</Text>
+                                        </View>
+                                    </View>
+                                </ImageBackground>
+                            </HoverScale>
+                        );
+                    })}
+                </View>
+            );
         }
 
         if (activeTab === 'RACE') {
-            if (races.length === 0) return <Text style={styles.emptyText}>No favorite races.</Text>;
-            return races.map((race: any) => (
-                <HoverScale key={race.id} style={styles.largeCard}>
-                    <ImageBackground
-                        source={{ uri: getRaceImage(race.circuit?.country || '') }}
-                        style={styles.cardInfo}
-                        imageStyle={{ borderRadius: 16 }}
-                        resizeMode="cover"
-                    >
-                        <View style={styles.cardOverlay}>
-                            <View style={styles.cardHeader}>
-                                <Text style={styles.roundBadge}>R{race.round}</Text>
-                                <IconSymbol name="star.fill" size={24} color="#FFD700" />
-                            </View>
-                            <View>
-                                <Text style={styles.largeCardTitle}>{race.name}</Text>
-                                <Text style={styles.largeCardSubtitle}>{race.circuit?.name}</Text>
-                                <Text style={styles.largeCardDate}>{format(new Date(race.date), 'MMM dd, yyyy')}</Text>
-                            </View>
-                        </View>
-                    </ImageBackground>
-                </HoverScale>
-            ));
+            const raceItems = favorites.filter(f => f.type === 'race');
+            if (raceItems.length === 0) return <Text style={styles.emptyText}>No favorite races.</Text>;
+
+            return (
+                <View style={gridContainerStyle as any}>
+                    {raceItems.map((item) => {
+                        const race = item.data || {};
+                        return (
+                            <HoverScale key={item.id.toString() + '_' + item.itemId} style={[styles.largeCard, cardStyle]}>
+                                <ImageBackground
+                                    source={{ uri: getRaceImage(race.circuit?.country || '') }}
+                                    style={styles.cardInfo}
+                                    imageStyle={{ borderRadius: 16 }}
+                                    resizeMode="cover"
+                                >
+                                    <View style={styles.cardOverlay}>
+                                        <View style={styles.cardHeader}>
+                                            <Text style={styles.roundBadge}>R{race.round || '?'}</Text>
+                                            <IconSymbol name="star.fill" size={24} color="#FFD700" />
+                                        </View>
+                                        <View>
+                                            <Text style={styles.largeCardTitle}>{race.name || 'Unknown Race'}</Text>
+                                            <Text style={styles.largeCardSubtitle}>{race.circuit?.name || 'Unknown Circuit'}</Text>
+                                            <Text style={styles.largeCardDate}>{race.date ? format(new Date(race.date), 'MMM dd, yyyy') : 'TBD'}</Text>
+                                        </View>
+                                    </View>
+                                </ImageBackground>
+                            </HoverScale>
+                        );
+                    })}
+                </View>
+            );
         }
     };
 
@@ -402,6 +432,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     headerTitle: {
         fontSize: 24,
@@ -412,9 +445,11 @@ const styles = StyleSheet.create({
     headerContainer: {
         paddingHorizontal: 20,
         paddingTop: 20,
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     redHeaderCard: {
-        // backgroundColor: Colors.dark.card, // Removed in favor of gradient
         marginTop: 10,
         height: 100,
         borderRadius: 16,
@@ -431,6 +466,9 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 20,
         marginTop: 32, // Increased gap
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     settingsGrid: {
         gap: 12,

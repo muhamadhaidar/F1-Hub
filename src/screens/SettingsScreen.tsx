@@ -30,14 +30,16 @@ export default function SettingsScreen() {
             <View style={[styles.header, {
                 backgroundColor: resolvedTheme === 'dark' ? Colors.dark.card : Colors.light.card,
                 borderBottomColor: resolvedTheme === 'dark' ? Colors.dark.border : Colors.light.border,
-                paddingTop: (insets.top || 40) + 10,
-                paddingBottom: 12,
+                paddingTop: (insets.top || 40),
+                // Padding bottom moved to content
             }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={15}>
-                    <IconSymbol name="chevron.left" size={28} color={resolvedTheme === 'dark' ? "#FFF" : "#000"} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: resolvedTheme === 'dark' ? "#FFF" : "#000" }]}>{t('settings').toUpperCase()}</Text>
-                <View style={{ width: 44 }} />
+                <View style={styles.headerContent}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={15}>
+                        <IconSymbol name="chevron.left" size={28} color={resolvedTheme === 'dark' ? "#FFF" : "#000"} />
+                    </TouchableOpacity>
+                    <Text style={[styles.headerTitle, { color: resolvedTheme === 'dark' ? "#FFF" : "#000" }]}>{t('settings').toUpperCase()}</Text>
+                    <View style={{ width: 44 }} />
+                </View>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -104,14 +106,22 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        // maxWidth removed to allow full background width
+        width: '100%',
     },
     header: {
+        width: '100%',
+        borderBottomWidth: 1,
+    },
+    headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        borderBottomWidth: 1,
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     backButton: {
         padding: 8,
@@ -124,6 +134,10 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 20,
+        // Constrain settings list width
+        maxWidth: 1200,
+        width: '100%',
+        alignSelf: 'center',
     },
     sectionTitle: {
         color: '#888',

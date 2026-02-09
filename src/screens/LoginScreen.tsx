@@ -71,6 +71,7 @@ export default function LoginScreen() {
                             onChangeText={setEmail}
                             autoCapitalize="none"
                             keyboardType="email-address"
+                            testID="email-input"
                         />
                     </View>
 
@@ -83,17 +84,19 @@ export default function LoginScreen() {
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
+                            testID="password-input"
                         />
                     </View>
 
                     <Pressable
-                        style={({ pressed }) => [
+                        style={({ pressed }: { pressed: boolean }) => [
                             styles.button,
                             loading && styles.buttonDisabled,
                             pressed && { opacity: 0.8 }
                         ]}
                         onPress={handleAuth}
                         disabled={loading}
+                        testID="auth-button"
                     >
                         <Text style={styles.buttonText}>
                             {loading ? (isSignUp ? t('creating') : t('startingEngine')) : (isSignUp ? t('createAccount') : t('signIn'))}
@@ -123,7 +126,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         padding: 24,
-        maxWidth: 1000,
+        maxWidth: 1200, // Keep content constrained
         width: '100%',
         alignSelf: 'center',
     },

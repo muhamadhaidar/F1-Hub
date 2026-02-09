@@ -57,7 +57,7 @@ const ConstructorStandingItem = React.memo(({ item, themeColors, isFavorite, onT
 ));
 
 export default function StandingsScreen() {
-    const route = useRoute<any>();
+    const route = useRoute();
     const navigation = useNavigation();
     const initialType = route.params?.type || 'driver';
     const [year, setYear] = useState('2025');
@@ -147,9 +147,10 @@ export default function StandingsScreen() {
             ) : (
                 <FlatList
                     data={data}
-                    keyExtractor={(item) => item.position}
+                    keyExtractor={(item: any) => item.position}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
+                    style={{ maxWidth: 800, width: '100%', alignSelf: 'center' }}
                 />
             )}
         </SafeAreaView>
